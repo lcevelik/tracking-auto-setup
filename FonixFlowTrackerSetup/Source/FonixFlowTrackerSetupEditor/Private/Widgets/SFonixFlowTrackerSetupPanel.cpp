@@ -333,19 +333,22 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildLensTypeSection()
 
 	// Prime lens focal length input
 	+ SVerticalBox::Slot().AutoHeight().Padding(24, 0, 0, 8)
-	.Visibility(bUsePrimeLens ? EVisibility::Visible : EVisibility::Collapsed)
 	[
-		SNew(SHorizontalBox)
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0, 0, 8, 0)
-		[ SNew(STextBlock).Text(LOCTEXT("PrimeFL", "Focal Length (mm):")).Font(FCoreStyle::GetDefaultFontStyle("Regular", 10)) ]
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+		SNew(SBox)
+		.Visibility_Lambda([this]() -> EVisibility { return bUsePrimeLens ? EVisibility::Visible : EVisibility::Collapsed; })
 		[
-			SNew(SSpinBox<float>)
-			.MinValue(8.0f)
-			.MaxValue(300.0f)
-			.Value(PrimeLensFocalLengthMM)
-			.OnValueChanged_Lambda([this](float Val) { PrimeLensFocalLengthMM = Val; })
-			.MinDesiredWidth(80)
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0, 0, 8, 0)
+			[ SNew(STextBlock).Text(LOCTEXT("PrimeFL", "Focal Length (mm):")).Font(FCoreStyle::GetDefaultFontStyle("Regular", 10)) ]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				SNew(SSpinBox<float>)
+				.MinValue(8.0f)
+				.MaxValue(300.0f)
+				.Value(PrimeLensFocalLengthMM)
+				.OnValueChanged_Lambda([this](float Val) { PrimeLensFocalLengthMM = Val; })
+				.MinDesiredWidth(80)
+			]
 		]
 	]
 
@@ -378,30 +381,33 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildLensTypeSection()
 
 	// Zoom lens range inputs
 	+ SVerticalBox::Slot().AutoHeight().Padding(24, 0, 0, 4)
-	.Visibility(!bUsePrimeLens ? EVisibility::Visible : EVisibility::Collapsed)
 	[
-		SNew(SHorizontalBox)
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0, 0, 8, 0)
-		[ SNew(STextBlock).Text(LOCTEXT("ZoomMin", "Min Focal Length (mm):")).Font(FCoreStyle::GetDefaultFontStyle("Regular", 10)) ]
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+		SNew(SBox)
+		.Visibility_Lambda([this]() -> EVisibility { return !bUsePrimeLens ? EVisibility::Visible : EVisibility::Collapsed; })
 		[
-			SNew(SSpinBox<float>)
-			.MinValue(8.0f)
-			.MaxValue(300.0f)
-			.Value(FocalLengthMinMM)
-			.OnValueChanged_Lambda([this](float Val) { FocalLengthMinMM = Val; })
-			.MinDesiredWidth(80)
-		]
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(16, 0, 8, 0)
-		[ SNew(STextBlock).Text(LOCTEXT("ZoomMax", "Max Focal Length (mm):")).Font(FCoreStyle::GetDefaultFontStyle("Regular", 10)) ]
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-		[
-			SNew(SSpinBox<float>)
-			.MinValue(8.0f)
-			.MaxValue(300.0f)
-			.Value(FocalLengthMaxMM)
-			.OnValueChanged_Lambda([this](float Val) { FocalLengthMaxMM = Val; })
-			.MinDesiredWidth(80)
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0, 0, 8, 0)
+			[ SNew(STextBlock).Text(LOCTEXT("ZoomMin", "Min Focal Length (mm):")).Font(FCoreStyle::GetDefaultFontStyle("Regular", 10)) ]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				SNew(SSpinBox<float>)
+				.MinValue(8.0f)
+				.MaxValue(300.0f)
+				.Value(FocalLengthMinMM)
+				.OnValueChanged_Lambda([this](float Val) { FocalLengthMinMM = Val; })
+				.MinDesiredWidth(80)
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(16, 0, 8, 0)
+			[ SNew(STextBlock).Text(LOCTEXT("ZoomMax", "Max Focal Length (mm):")).Font(FCoreStyle::GetDefaultFontStyle("Regular", 10)) ]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				SNew(SSpinBox<float>)
+				.MinValue(8.0f)
+				.MaxValue(300.0f)
+				.Value(FocalLengthMaxMM)
+				.OnValueChanged_Lambda([this](float Val) { FocalLengthMaxMM = Val; })
+				.MinDesiredWidth(80)
+			]
 		]
 	]
 
@@ -706,36 +712,39 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildCalibrationSection()
 
 	// Focal Length (only for zoom)
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
-	.Visibility(!bUsePrimeLens ? EVisibility::Visible : EVisibility::Collapsed)
 	[
-		SNew(SBorder)
-		.BorderImage(FAppStyle::GetBrush("ToolPanel.DarkGroupBorder"))
-		.Padding(8)
+		SNew(SBox)
+		.Visibility_Lambda([this]() -> EVisibility { return !bUsePrimeLens ? EVisibility::Visible : EVisibility::Collapsed; })
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
-			[ SNew(STextBlock).Text(LOCTEXT("ZoomLabel", "Focal Length Encoder")).Font(FCoreStyle::GetDefaultFontStyle("Bold", 11)) ]
-
-			+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
+			SNew(SBorder)
+			.BorderImage(FAppStyle::GetBrush("ToolPanel.DarkGroupBorder"))
+			.Padding(8)
 			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
-				[ SNew(STextBlock).Text_Raw(this, &SFonixFlowTrackerSetupPanel::GetZoomMinText) ]
-				+ SHorizontalBox::Slot().AutoWidth()
-				[ SNew(SButton).Text(LOCTEXT("CaptureZoomMin", "Capture Minimum"))
-					.OnClicked_Lambda([this]() -> FReply { CaptureZoomMin(); return FReply::Handled(); })
-					.ButtonStyle(FAppStyle::Get(), "FlatButton.Default") ]
-			]
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
+				[ SNew(STextBlock).Text(LOCTEXT("ZoomLabel", "Focal Length Encoder")).Font(FCoreStyle::GetDefaultFontStyle("Bold", 11)) ]
 
-			+ SVerticalBox::Slot().AutoHeight()
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
-				[ SNew(STextBlock).Text_Raw(this, &SFonixFlowTrackerSetupPanel::GetZoomMaxText) ]
-				+ SHorizontalBox::Slot().AutoWidth()
-				[ SNew(SButton).Text(LOCTEXT("CaptureZoomMax", "Capture Maximum"))
-					.OnClicked_Lambda([this]() -> FReply { CaptureZoomMax(); return FReply::Handled(); })
-					.ButtonStyle(FAppStyle::Get(), "FlatButton.Default") ]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+					[ SNew(STextBlock).Text_Raw(this, &SFonixFlowTrackerSetupPanel::GetZoomMinText) ]
+					+ SHorizontalBox::Slot().AutoWidth()
+					[ SNew(SButton).Text(LOCTEXT("CaptureZoomMin", "Capture Minimum"))
+						.OnClicked_Lambda([this]() -> FReply { CaptureZoomMin(); return FReply::Handled(); })
+						.ButtonStyle(FAppStyle::Get(), "FlatButton.Default") ]
+				]
+
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+					[ SNew(STextBlock).Text_Raw(this, &SFonixFlowTrackerSetupPanel::GetZoomMaxText) ]
+					+ SHorizontalBox::Slot().AutoWidth()
+					[ SNew(SButton).Text(LOCTEXT("CaptureZoomMax", "Capture Maximum"))
+						.OnClicked_Lambda([this]() -> FReply { CaptureZoomMax(); return FReply::Handled(); })
+						.ButtonStyle(FAppStyle::Get(), "FlatButton.Default") ]
+				]
 			]
 		]
 	]
@@ -841,7 +850,6 @@ void SFonixFlowTrackerSetupPanel::PollLiveLinkData()
 		return;
 	}
 
-	// Read LiveLink frame data for the subject
 	ILiveLinkClient* LiveLinkClient = nullptr;
 	IModularFeatures& ModularFeatures = IModularFeatures::Get();
 	if (ModularFeatures.IsModularFeatureAvailable(ILiveLinkClient::ModularFeatureName))
@@ -852,23 +860,21 @@ void SFonixFlowTrackerSetupPanel::PollLiveLinkData()
 	if (!LiveLinkClient || !ActiveSourceGuid.IsValid()) return;
 
 	// Get all subjects from our source
-	TArray<FLiveLinkSubjectKey> AllSubjects = LiveLinkClient->GetSubjects();
+	TArray<FLiveLinkSubjectKey> AllSubjects = LiveLinkClient->GetSubjects(false, false);
 
 	for (const FLiveLinkSubjectKey& SubjectKey : AllSubjects)
 	{
 		if (SubjectKey.Source != ActiveSourceGuid) continue;
 
-		// Get static + frame data
-		TSubclassOf<ULiveLinkRole> Role = LiveLinkClient->GetSubjectRole(SubjectKey);
-		if (!Role || !Role->IsChildOf(ULiveLinkCameraRole::StaticClass())) continue;
+		// Check if subject supports camera role
+		if (!LiveLinkClient->DoesSubjectSupportsRole_AnyThread(SubjectKey, ULiveLinkCameraRole::StaticClass()))
+			continue;
 
-		FLiveLinkStaticDataStruct StaticData;
-		LiveLinkClient->EvaluateFrame_AnyThread(SubjectKey.SubjectName, ULiveLinkCameraRole::StaticClass(), StaticData);
-
-		FLiveLinkFrameDataStruct FrameData;
-		if (LiveLinkClient->GetSubjectData(SubjectKey, FrameData))
+		// Evaluate frame data
+		FLiveLinkSubjectFrameData FrameData;
+		if (LiveLinkClient->EvaluateFrame_AnyThread(SubjectKey.SubjectName, ULiveLinkCameraRole::StaticClass(), FrameData))
 		{
-			FLiveLinkCameraFrameData* CameraFrame = FrameData.Cast<FLiveLinkCameraFrameData>();
+			FLiveLinkCameraFrameData* CameraFrame = FrameData.FrameData.Cast<FLiveLinkCameraFrameData>();
 			if (CameraFrame)
 			{
 				// FocusDistance and FocalLength from FreeD are 0-1 normalized
@@ -953,15 +959,6 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 		// Subject representation: use subject from LiveLink (auto-discovered)
 		LLController->SubjectRepresentation.Role = ULiveLinkCameraRole::StaticClass();
 		// Don't set SubjectName — let it discover from the source
-
-		// Camera settings: enable UseCameraRange for proper calibration
-		ULiveLinkCameraController* CameraController = Cast<ULiveLinkCameraController>(
-			LLController->FindComponentByClass<ULiveLinkCameraController>());
-		if (!CameraController)
-		{
-			// The camera controller is typically a sub-component; check the settings
-			AddLog(TEXT("  Camera role configured — UseCameraRange enabled"));
-		}
 
 		AddLog(TEXT("  Subject role: Camera (from LiveLink)"));
 	}
