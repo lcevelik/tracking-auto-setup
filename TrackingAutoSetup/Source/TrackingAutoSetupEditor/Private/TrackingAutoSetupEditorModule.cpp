@@ -3,6 +3,8 @@
 #include "TrackingAutoSetupEditorModule.h"
 #include "TrackingAutoSetupSubsystem.h"
 #include "TrackingSetupTypes.h"
+#include "TrackingAutoSetupStyle.h"
+#include "Widgets/STrackingAutoSetupPanel.h"
 #include "Widgets/STrackingSetupWizard.h"
 #include "Widgets/STrackingAIChatPanel.h"
 #include "ToolMenus.h"
@@ -10,42 +12,58 @@
 #include "WorkspaceMenuStructure.h"
 #include "WorkspaceMenuStructureModule.h"
 #include "Widgets/Docking/SDockTab.h"
+#include "Widgets/Layout/SBorder.h"
+#include "Widgets/Images/SImage.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "EditorStyleSet.h"
 #include "Engine/World.h"
 
 #define LOCTEXT_NAMESPACE "TrackingAutoSetupEditor"
 
+const FName FTrackingAutoSetupEditorModule::MainPanelTabId("TrackingAutoSetupMainPanel");
 const FName FTrackingAutoSetupEditorModule::WizardTabId("TrackingAutoSetupWizard");
 const FName FTrackingAutoSetupEditorModule::AIChatTabId("TrackingAutoSetupAIChat");
 
 void FTrackingAutoSetupEditorModule::StartupModule()
 {
+	// Initialize custom style (icons)
+	FTrackingAutoSetupStyle::Initialize();
+
 	// Register tab spawners
+	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(MainPanelTabId,
+		FOnSpawnTab::CreateRaw(this, &FTrackingAutoSetupEditorModule::OnSpawnMainPanelTab))
+		.SetDisplayName(LOCTEXT("MainPanelTab", "Tracking Auto Setup"))
+		.SetTooltipText(LOCTEXT("MainPanelTabTooltip", "Open Tracking Auto Setup panel"))
+		.SetGroup(WorkspaceMenu::GetMenuStructure().GetToolsCategory())
+		.SetIcon(FSlateIcon(FTrackingAutoSetupStyle::GetStyleName(), "TrackingAutoSetup.TabIcon"));
+
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(WizardTabId,
 		FOnSpawnTab::CreateRaw(this, &FTrackingAutoSetupEditorModule::OnSpawnWizardTab))
 		.SetDisplayName(LOCTEXT("WizardTab", "Tracking Setup Wizard"))
 		.SetTooltipText(LOCTEXT("WizardTabTooltip", "Open the tracking setup wizard"))
 		.SetGroup(WorkspaceMenu::GetMenuStructure().GetToolsCategory())
-		.SetIcon(FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.GameSettings"));
+		.SetIcon(FSlateIcon(FTrackingAutoSetupStyle::GetStyleName(), "TrackingAutoSetup.TabIcon"));
 
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(AIChatTabId,
 		FOnSpawnTab::CreateRaw(this, &FTrackingAutoSetupEditorModule::OnSpawnAIChatTab))
 		.SetDisplayName(LOCTEXT("AIChatTab", "Tracking AI Assistant"))
-		.SetTooltipText(LOCTEXT("AIChatTabTooltip", "Open the AI chat assistant for tracking questions"))
+		.SetTooltipText(LOCTEXT("AIChatTabTooltip", "Open the AI chat assistant"))
 		.SetGroup(WorkspaceMenu::GetMenuStructure().GetToolsCategory())
-		.SetIcon(FSlateIcon(FEditorStyle::GetStyleSetName(), "Icons.Help"));
+		.SetIcon(FSlateIcon(FTrackingAutoSetupStyle::GetStyleName(), "TrackingAutoSetup.TabIcon"));
 
 	RegisterMenus();
 
-	UE_LOG(LogTemp, Log, TEXT("TrackingAutoSetup Editor: Module started"));
+	UE_LOG(LogTemp, Log, TEXT("TrackingAutoSetup Editor: Module started with custom icons"));
 }
 
 void FTrackingAutoSetupEditorModule::ShutdownModule()
 {
+	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(MainPanelTabId);
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(WizardTabId);
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(AIChatTabId);
+
 	UnregisterMenus();
+	FTrackingAutoSetupStyle::Shutdown();
 
 	UE_LOG(LogTemp, Log, TEXT("TrackingAutoSetup Editor: Module shut down"));
 }
@@ -58,27 +76,18 @@ void FTrackingAutoSetupEditorModule::RegisterMenus()
 
 void FTrackingAutoSetupEditorModule::RegisterMenus()
 {
-	// Add to the Level Editor toolbar
+	// Main toolbar button (like the Python pattern - opens the panel widget)
 	UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar.PlayToolBar");
 	FToolMenuSection& Section = ToolbarMenu->AddSection("TrackingAutoSetup", LOCTEXT("TrackingAutoSetup", "Tracking"));
 
-	// Wizard button
-	Section.AddMenuEntry(
-		"OpenWizard",
-		LOCTEXT("OpenWizard", "Tracking Wizard"),
-		LOCTEXT("OpenWizardTooltip", "Open the tracking setup wizard"),
-		FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.GameSettings"),
-		FUIAction(FExecuteAction::CreateRaw(this, &FTrackingAutoSetupEditorModule::OnOpenWizard))
-	);
-
-	// AI Chat button
-	Section.AddMenuEntry(
-		"OpenAIChat",
-		LOCTEXT("OpenAIChat", "Tracking AI"),
-		LOCTEXT("OpenAIChatTooltip", "Open the AI chat assistant"),
-		FSlateIcon(FEditorStyle::GetStyleSetName(), "Icons.Help"),
-		FUIAction(FExecuteAction::CreateRaw(this, &FTrackingAutoSetupEditorModule::OnOpenAIChat))
-	);
+	// Main panel button with custom icon
+	Section.AddEntry(FToolMenuEntry::InitToolBarButton(
+		"OpenMainPanel",
+		FUIAction(FExecuteAction::CreateRaw(this, &FTrackingAutoSetupEditorModule::OnOpenMainPanel)),
+		LOCTEXT("MainPanel", "Tracking Auto Setup"),
+		LOCTEXT("MainPanelTooltip", "Open Tracking Auto Setup panel with wizard, AI chat, and quick setup"),
+		FSlateIcon(FTrackingAutoSetupStyle::GetStyleName(), "TrackingAutoSetup.Icon")
+	));
 
 	// Quick setup submenu
 	Section.AddSubMenu(
@@ -90,13 +99,13 @@ void FTrackingAutoSetupEditorModule::RegisterMenus()
 			SubMenuBuilder.AddMenuEntry(
 				LOCTEXT("QuickFreeD", "FreeD Camera"),
 				LOCTEXT("QuickFreeDTooltip", "Quick FreeD setup with defaults"),
-				FSlateIcon(),
+				FSlateIcon(FTrackingAutoSetupStyle::GetStyleName(), "TrackingAutoSetup.QuickSetupIcon"),
 				FUIAction(FExecuteAction::CreateRaw(this, &FTrackingAutoSetupEditorModule::OnSetupFreeDQuick))
 			);
 			SubMenuBuilder.AddMenuEntry(
 				LOCTEXT("QuickOpenTrack", "OpenTrack Camera"),
 				LOCTEXT("QuickOpenTrackTooltip", "Quick OpenTrack IO setup with defaults"),
-				FSlateIcon(),
+				FSlateIcon(FTrackingAutoSetupStyle::GetStyleName(), "TrackingAutoSetup.QuickSetupIcon"),
 				FUIAction(FExecuteAction::CreateRaw(this, &FTrackingAutoSetupEditorModule::OnSetupOpenTrackQuick))
 			);
 		})
@@ -107,18 +116,26 @@ void FTrackingAutoSetupEditorModule::RegisterMenus()
 	FToolMenuSection& ToolsSection = ToolsMenu->AddSection("TrackingAutoSetup", LOCTEXT("TrackingAutoSetupTools", "Tracking Auto Setup"));
 
 	ToolsSection.AddMenuEntry(
+		"OpenMainPanelTools",
+		LOCTEXT("OpenMainPanelTools", "Tracking Auto Setup"),
+		LOCTEXT("OpenMainPanelToolsTooltip", "Open the main Tracking Auto Setup panel"),
+		FSlateIcon(FTrackingAutoSetupStyle::GetStyleName(), "TrackingAutoSetup.Icon"),
+		FUIAction(FExecuteAction::CreateRaw(this, &FTrackingAutoSetupEditorModule::OnOpenMainPanel))
+	);
+
+	ToolsSection.AddMenuEntry(
 		"OpenWizardTools",
 		LOCTEXT("OpenWizardTools", "Tracking Setup Wizard"),
 		LOCTEXT("OpenWizardToolsTooltip", "Open the tracking setup wizard"),
-		FSlateIcon(),
+		FSlateIcon(FTrackingAutoSetupStyle::GetStyleName(), "TrackingAutoSetup.WizardIcon"),
 		FUIAction(FExecuteAction::CreateRaw(this, &FTrackingAutoSetupEditorModule::OnOpenWizard))
 	);
 
 	ToolsSection.AddMenuEntry(
 		"OpenAIChatTools",
 		LOCTEXT("OpenAIChatTools", "Tracking AI Assistant"),
-		LOCTEXT("OpenAIChatToolsTooltip", "Open the AI chat assistant for tracking questions"),
-		FSlateIcon(),
+		LOCTEXT("OpenAIChatToolsTooltip", "Open the AI chat assistant"),
+		FSlateIcon(FTrackingAutoSetupStyle::GetStyleName(), "TrackingAutoSetup.AIChatIcon"),
 		FUIAction(FExecuteAction::CreateRaw(this, &FTrackingAutoSetupEditorModule::OnOpenAIChat))
 	);
 }
@@ -128,10 +145,21 @@ void FTrackingAutoSetupEditorModule::UnregisterMenus()
 	UToolMenus::UnRegisterOwnerByPluginName("TrackingAutoSetup");
 }
 
+TSharedRef<SDockTab> FTrackingAutoSetupEditorModule::OnSpawnMainPanelTab(const FSpawnTabArgs& Args)
+{
+	return SNew(SDockTab)
+		.TabRole(ETabRole::NomadTab)
+		.Label(LOCTEXT("MainPanelLabel", "Tracking Auto Setup"))
+		[
+			SNew(STrackingAutoSetupPanel)
+		];
+}
+
 TSharedRef<SDockTab> FTrackingAutoSetupEditorModule::OnSpawnWizardTab(const FSpawnTabArgs& Args)
 {
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
+		.Label(LOCTEXT("WizardLabel", "Tracking Wizard"))
 		[
 			SNew(STrackingSetupWizard)
 		];
@@ -141,9 +169,15 @@ TSharedRef<SDockTab> FTrackingAutoSetupEditorModule::OnSpawnAIChatTab(const FSpa
 {
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
+		.Label(LOCTEXT("AIChatLabel", "Tracking AI"))
 		[
 			SNew(STrackingAIChatPanel)
 		];
+}
+
+void FTrackingAutoSetupEditorModule::OnOpenMainPanel()
+{
+	FGlobalTabmanager::Get()->TryInvokeTab(MainPanelTabId);
 }
 
 void FTrackingAutoSetupEditorModule::OnOpenWizard()
@@ -162,15 +196,7 @@ void FTrackingAutoSetupEditorModule::OnSetupFreeDQuick()
 	if (!World) return;
 
 	FTrackingSetupResult Result = UTrackingAutoSetupSubsystem::SetupFreeDCamera(World);
-
-	if (Result.bSuccess)
-	{
-		UE_LOG(LogTemp, Log, TEXT("TrackingAutoSetup: %s"), *Result.Message);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("TrackingAutoSetup: Setup failed - %s"), *Result.Message);
-	}
+	UE_LOG(LogTemp, Log, TEXT("TrackingAutoSetup: %s"), *Result.Message);
 }
 
 void FTrackingAutoSetupEditorModule::OnSetupOpenTrackQuick()
@@ -179,15 +205,7 @@ void FTrackingAutoSetupEditorModule::OnSetupOpenTrackQuick()
 	if (!World) return;
 
 	FTrackingSetupResult Result = UTrackingAutoSetupSubsystem::SetupOpenTrackCamera(World);
-
-	if (Result.bSuccess)
-	{
-		UE_LOG(LogTemp, Log, TEXT("TrackingAutoSetup: %s"), *Result.Message);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("TrackingAutoSetup: Setup failed - %s"), *Result.Message);
-	}
+	UE_LOG(LogTemp, Log, TEXT("TrackingAutoSetup: %s"), *Result.Message);
 }
 
 #undef LOCTEXT_NAMESPACE

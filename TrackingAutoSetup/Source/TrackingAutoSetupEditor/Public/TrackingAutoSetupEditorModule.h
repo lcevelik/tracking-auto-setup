@@ -14,23 +14,23 @@ public:
 	virtual void ShutdownModule() override;
 
 private:
-	/** Register toolbar buttons, menu entries, and tab spawners */
+	/** Register toolbar buttons, menu entries, tab spawners, and styles */
 	void RegisterMenus();
 	void UnregisterMenus();
 
 	/** Tab spawners */
+	static const FName MainPanelTabId;
 	static const FName WizardTabId;
 	static const FName AIChatTabId;
 
+	TSharedRef<SDockTab> OnSpawnMainPanelTab(const FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> OnSpawnWizardTab(const FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> OnSpawnAIChatTab(const FSpawnTabArgs& Args);
 
 	/** Callbacks for toolbar actions */
+	void OnOpenMainPanel();
 	void OnOpenWizard();
 	void OnOpenAIChat();
 	void OnSetupFreeDQuick();
 	void OnSetupOpenTrackQuick();
-
-	/** Delegate handles for cleanup */
-	TSharedPtr<class FUICommandList> PluginCommands;
 };
