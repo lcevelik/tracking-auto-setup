@@ -41,6 +41,10 @@
 			"Enabled": true
 		},
 		{
+			"Name": "VirtualCameraCore",
+			"Enabled": true
+		},
+		{
 			"Name": "LensComponent",
 			"Enabled": true
 		}

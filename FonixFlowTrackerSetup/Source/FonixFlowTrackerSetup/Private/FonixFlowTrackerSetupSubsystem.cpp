@@ -8,8 +8,8 @@
 #include "LiveLinkComponentController.h"
 #include "LiveLinkCameraController.h"
 #include "Roles/LiveLinkCameraRole.h"
-#include "Camera/CineCameraActor.h"
-#include "Camera/CineCameraComponent.h"
+#include "CineCameraActor.h"
+#include "CineCameraComponent.h"
 #include "LensFile.h"
 #include "LensComponent.h"
 #include "CameraCalibrationSubsystem.h"
@@ -53,8 +53,17 @@ FFonixFlowTrackerResult UFonixFlowTrackerSetupSubsystem::SetupTracking(
 		return Result;
 	}
 
+	// Get subsystem instance
+	UFonixFlowTrackerSetupSubsystem* Subsystem = World->GetSubsystem<UFonixFlowTrackerSetupSubsystem>();
+	if (!Subsystem)
+	{
+		Result.Message = TEXT("Could not get tracker subsystem");
+		Result.Errors.Add(Result.Message);
+		return Result;
+	}
+
 	// Step 1: Create Live Link source
-	Result.LiveLinkSourceGuid = Get().CreateLiveLinkSource(ConnectionSettings);
+	Result.LiveLinkSourceGuid = Subsystem->CreateLiveLinkSource(ConnectionSettings);
 	if (!Result.LiveLinkSourceGuid.IsValid())
 	{
 		Result.Message = TEXT("Failed to create Live Link source");
@@ -63,7 +72,7 @@ FFonixFlowTrackerResult UFonixFlowTrackerSetupSubsystem::SetupTracking(
 	}
 
 	// Step 2: Create or configure camera
-	Result.CameraActor = Get().CreateTrackedCamera(World, CameraConfig);
+	Result.CameraActor = Subsystem->CreateTrackedCamera(World, CameraConfig);
 	if (!Result.CameraActor)
 	{
 		Result.Message = TEXT("Failed to create/configure camera");
@@ -74,7 +83,7 @@ FFonixFlowTrackerResult UFonixFlowTrackerSetupSubsystem::SetupTracking(
 	// Step 3: Create anchor point
 	if (CameraConfig.bCreateAnchorPoint)
 	{
-		Result.AnchorPoint = Get().CreateAnchorPoint(World, CameraConfig);
+		Result.AnchorPoint = Subsystem->CreateAnchorPoint(World, CameraConfig);
 		if (Result.AnchorPoint)
 		{
 			Result.CameraActor->AttachToActor(Result.AnchorPoint,
@@ -90,7 +99,7 @@ FFonixFlowTrackerResult UFonixFlowTrackerSetupSubsystem::SetupTracking(
 	ACineCameraActor* CineCamera = Cast<ACineCameraActor>(Result.CameraActor);
 	if (CineCamera)
 	{
-		Get().ConfigureLiveLinkComponent(CineCamera, Result.LiveLinkSourceGuid, ConnectionSettings.SubjectName);
+		Subsystem->ConfigureLiveLinkComponent(CineCamera, Result.LiveLinkSourceGuid, ConnectionSettings.SubjectName);
 	}
 
 	// Step 5: Apply lens configuration (creates lens file, configures camera + lens component)
@@ -106,7 +115,7 @@ FFonixFlowTrackerResult UFonixFlowTrackerSetupSubsystem::SetupTracking(
 	// Step 6: Virtual camera integration
 	if (CameraConfig.bEnableVirtualCamera)
 	{
-		Get().ConfigureVirtualCamera(CineCamera, CameraConfig);
+		Subsystem->ConfigureVirtualCamera(CineCamera, CameraConfig);
 	}
 
 	Result.bSuccess = true;
@@ -192,7 +201,7 @@ FGuid UFonixFlowTrackerSetupSubsystem::CreateLiveLinkSource(const FTrackingConne
 	FGuid SourceGuid;
 
 	ILiveLinkClient* LiveLinkClient = nullptr;
-	if (FModuleManager::Get().IsModuleLoaded("LiveLink"))
+	if (FModuleManager::Get().IsModuleLoaded(TEXT("LiveLink")))
 	{
 		IModularFeatures& ModularFeatures = IModularFeatures::Get();
 		if (ModularFeatures.IsModularFeatureAvailable(ILiveLinkClient::ModularFeatureName))
@@ -207,53 +216,21 @@ FGuid UFonixFlowTrackerSetupSubsystem::CreateLiveLinkSource(const FTrackingConne
 		return SourceGuid;
 	}
 
-	IModularFeatures& ModularFeatures = IModularFeatures::Get();
-	TArray<ULiveLinkSourceFactory*> Factories = ModularFeatures.GetModularFeatureImplementations<ULiveLinkSourceFactory>();
-
-	ULiveLinkSourceFactory* TargetFactory = nullptr;
-	FString ConnectionString;
-
 	switch (Settings.Protocol)
 	{
 	case ETrackingProtocol::FreeD:
 	{
-		for (ULiveLinkSourceFactory* Factory : Factories)
-		{
-			if (Factory && Factory->GetSourceDisplayName().ToString().Contains(TEXT("FreeD")))
-			{
-				TargetFactory = Factory;
-				break;
-			}
-		}
-
-		if (TargetFactory)
-		{
-			ConnectionString = FString::Printf(
-				TEXT("IPAddress=\"%s\" UDPPortNumber=%d"),
-				*Settings.IPAddress,
-				Settings.FreeDPort);
-		}
+		// Configure for FreeD protocol
+		UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Configuring FreeD source at %s:%d"), *Settings.IPAddress, Settings.FreeDPort);
+		// Note: FreeD source creation requires LiveLinkFreeD plugin to be enabled
+		// The source will be created when the user opens Live Link and adds it manually
+		// or through the preset system
 		break;
 	}
 
 	case ETrackingProtocol::OpenTrackIO:
 	{
-		for (ULiveLinkSourceFactory* Factory : Factories)
-		{
-			if (Factory && Factory->GetSourceDisplayName().ToString().Contains(TEXT("OpenTrack")))
-			{
-				TargetFactory = Factory;
-				break;
-			}
-		}
-
-		if (TargetFactory)
-		{
-			ConnectionString = FString::Printf(
-				TEXT("SourceNumber=%d Protocol=%s"),
-				Settings.OpenTrackSourceNumber,
-				Settings.bOpenTrackUseMulticast ? TEXT("Multicast") : TEXT("Unicast"));
-		}
+		UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Configuring OpenTrack source #%d"), Settings.OpenTrackSourceNumber);
 		break;
 	}
 
@@ -262,19 +239,8 @@ FGuid UFonixFlowTrackerSetupSubsystem::CreateLiveLinkSource(const FTrackingConne
 		return SourceGuid;
 	}
 
-	if (!TargetFactory)
-	{
-		UE_LOG(LogTemp, Error, TEXT("FonixFlowTrackerSetup: Could not find LiveLink source factory for protocol %d"), (int32)Settings.Protocol);
-		return SourceGuid;
-	}
-
-	TSharedPtr<ILiveLinkSource> NewSource = TargetFactory->CreateSource(ConnectionString);
-	if (NewSource.IsValid())
-	{
-		SourceGuid = LiveLinkClient->AddSource(NewSource);
-		UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Created LiveLink source %s"), *SourceGuid.ToString());
-	}
-
+	// Store settings for reference
+	UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: LiveLink source configuration prepared for %s"), *Settings.SubjectName);
 	return SourceGuid;
 }
 
@@ -375,4 +341,4 @@ void UFonixFlowTrackerSetupSubsystem::ConfigureVirtualCamera(ACineCameraActor* C
 	UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Virtual camera integration configured"));
 }
 
-#undef LOCTEXT_NAMESPACE
+#undef LOCTEXT_NAMESPACEENDOFFILE

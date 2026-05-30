@@ -13,11 +13,12 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SSeparator.h"
-#include "Camera/CineCameraActor.h"
-#include "Camera/CineCameraComponent.h"
+#include "CineCameraActor.h"
+#include "CineCameraComponent.h"
 #include "LensFile.h"
 #include "Engine/World.h"
 #include "Engine/Engine.h"
+#include "EngineUtils.h"
 #include "Editor.h"
 #include "EditorStyleSet.h"
 
@@ -30,10 +31,17 @@ void SFonixFlowTrackerSetupWizard::Construct(const FArguments& InArgs)
 	// Initialize sensor presets
 	SensorPresets = ULensSetupUtility::GetSensorPresets();
 
+	// Build cached sensor options for combo box
+	for (const FVector2D& Size : SensorPresets)
+	{
+		FString Name = ULensSetupUtility::GetSensorPresetName(Size);
+		CachedSensorOptions.Add(MakeShareable(new FString(FString::Printf(TEXT("%s (%.1fx%.1f mm)"), *Name, Size.X, Size.Y))));
+	}
+
 	ChildSlot
 	[
 		SNew(SBorder)
-		.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+		.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
 		.Padding(16)
 		[
 			SNew(SVerticalBox)
@@ -92,14 +100,14 @@ void SFonixFlowTrackerSetupWizard::Construct(const FArguments& InArgs)
 				+ SScrollBox::Slot()
 				[
 					SNew(SBorder)
-					.BorderImage(FEditorStyle::GetBrush("NoBorder"))
+					.BorderImage(FAppStyle::GetBrush("NoBorder"))
 					.Padding(0, 8)
 					[
 						SNew(SBox)
 						.MinDesiredHeight(300)
 						[
 							SNew(SBorder)
-							.BorderImage(FEditorStyle::GetBrush("ToolPanel.DarkGroupBorder"))
+							.BorderImage(FAppStyle::GetBrush("ToolPanel.DarkGroupBorder"))
 							.Padding(16)
 							[
 								GetCurrentStepContent()
@@ -273,6 +281,15 @@ FText SFonixFlowTrackerSetupWizard::GetStepNumberText() const
 // Step 1: Protocol Selection (same as before)
 TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildProtocolStep()
 {
+	static TArray<TSharedPtr<FString>> RigOptions = {
+		MakeShareable(new FString(TEXT("Generic"))),
+		MakeShareable(new FString(TEXT("Panasonic"))),
+		MakeShareable(new FString(TEXT("Sony"))),
+		MakeShareable(new FString(TEXT("stYpe"))),
+		MakeShareable(new FString(TEXT("Mosys"))),
+		MakeShareable(new FString(TEXT("Ncam")))
+	};
+
 	return SNew(SVerticalBox)
 
 	+ SVerticalBox::Slot()
@@ -290,7 +307,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildProtocolStep()
 	[
 		SNew(SBorder)
 		.BorderImage(ConnectionSettings.Protocol == ETrackingProtocol::FreeD
-			? FEditorStyle::GetBrush("ToolPanel.GroupBorder") : FEditorStyle::GetBrush("NoBorder"))
+			? FAppStyle::GetBrush("ToolPanel.GroupBorder") : FAppStyle::GetBrush("NoBorder"))
 		.Padding(12)
 		[
 			SNew(SHorizontalBox)
@@ -317,7 +334,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildProtocolStep()
 	[
 		SNew(SBorder)
 		.BorderImage(ConnectionSettings.Protocol == ETrackingProtocol::OpenTrackIO
-			? FEditorStyle::GetBrush("ToolPanel.GroupBorder") : FEditorStyle::GetBrush("NoBorder"))
+			? FAppStyle::GetBrush("ToolPanel.GroupBorder") : FAppStyle::GetBrush("NoBorder"))
 		.Padding(12)
 		[
 			SNew(SHorizontalBox)
@@ -352,17 +369,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildProtocolStep()
 	.Padding(0, 8, 0, 0)
 	[
 		SNew(SComboBox<TSharedPtr<FString>>)
-		.OptionsSource_Lambda([this]() -> TArray<TSharedPtr<FString>>
-		{
-			TArray<TSharedPtr<FString>> Options;
-			Options.Add(MakeShareable(new FString(TEXT("Generic"))));
-			Options.Add(MakeShareable(new FString(TEXT("Panasonic"))));
-			Options.Add(MakeShareable(new FString(TEXT("Sony"))));
-			Options.Add(MakeShareable(new FString(TEXT("stYpe"))));
-			Options.Add(MakeShareable(new FString(TEXT("Mosys"))));
-			Options.Add(MakeShareable(new FString(TEXT("Ncam"))));
-			return Options;
-		})
+		.OptionsSource(&RigOptions)
 		.OnSelectionChanged_Lambda([this](TSharedPtr<FString> NewValue, ESelectInfo::Type)
 		{
 			if (!NewValue.IsValid()) return;
@@ -484,7 +491,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildCameraStep()
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 12)
 	[
 		SNew(SVerticalBox)
-		.Visibility_Lambda([this]() -> EVisibility { return CameraConfig.bCreateNewCamera ? EVisibility::Visible : EVisibility::Collapsed; })
+		.Visibility(this, &SFonixFlowTrackerSetupWizard::GetCreateCameraVisibility)
 		+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
 		[ SNew(STextBlock).Text(LOCTEXT("CameraNameLabel", "Camera Name:")) ]
 		+ SVerticalBox::Slot().AutoHeight()
@@ -494,7 +501,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildCameraStep()
 	+ SVerticalBox::Slot().FillHeight(1.0f)
 	[
 		SNew(SVerticalBox)
-		.Visibility_Lambda([this]() -> EVisibility { return !CameraConfig.bCreateNewCamera ? EVisibility::Visible : EVisibility::Collapsed; })
+		.Visibility(this, &SFonixFlowTrackerSetupWizard::GetExistingCameraVisibility)
 		+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
 		[ SNew(STextBlock).Text(LOCTEXT("SelectCamera", "Select Camera:")).Font(FCoreStyle::GetDefaultFontStyle("Bold", 12)) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
@@ -502,7 +509,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildCameraStep()
 			.OnClicked_Lambda([this]() -> FReply { RefreshCameraList(); return FReply::Handled(); }) ]
 		+ SVerticalBox::Slot().FillHeight(1.0f)
 		[ SAssignNew(CameraListView, SListView<TWeakObjectPtr<ACineCameraActor>>)
-			.ListItemsSource(&AvailableCameras)
+			.ListItemsSource(&AvailableCameraWeakPtrs)
 			.OnGenerateRow_Lambda([](TWeakObjectPtr<ACineCameraActor> Item, const TSharedRef<STableViewBase>& OwnerTable) -> TSharedRef<ITableRow>
 			{
 				FString Name = Item.IsValid() ? Item->GetActorLabel() : TEXT("Invalid");
@@ -546,7 +553,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildLensSelectionStep()
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 12)
 	[
 		SNew(SVerticalBox)
-		.Visibility_Lambda([this]() -> EVisibility { return CameraConfig.LensConfig.bCreateNewLensFile ? EVisibility::Visible : EVisibility::Collapsed; })
+		.Visibility(this, &SFonixFlowTrackerSetupWizard::GetCreateLensVisibility)
 		+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
 		[ SNew(STextBlock).Text(LOCTEXT("LensNameLabel", "Lens File Name:")).Font(FCoreStyle::GetDefaultFontStyle("Bold", 12)) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 8)
@@ -569,7 +576,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildLensSelectionStep()
 	+ SVerticalBox::Slot().FillHeight(1.0f)
 	[
 		SNew(SVerticalBox)
-		.Visibility_Lambda([this]() -> EVisibility { return !CameraConfig.LensConfig.bCreateNewLensFile ? EVisibility::Visible : EVisibility::Collapsed; })
+		.Visibility(this, &SFonixFlowTrackerSetupWizard::GetExistingLensVisibility)
 		+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
 		[ SNew(STextBlock).Text(LOCTEXT("SelectLens", "Select Lens File:")).Font(FCoreStyle::GetDefaultFontStyle("Bold", 12)) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
@@ -577,7 +584,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildLensSelectionStep()
 			.OnClicked_Lambda([this]() -> FReply { RefreshLensFileList(); return FReply::Handled(); }) ]
 		+ SVerticalBox::Slot().FillHeight(1.0f)
 		[ SAssignNew(LensFileListView, SListView<TWeakObjectPtr<ULensFile>>)
-			.ListItemsSource(&AvailableLensFiles)
+			.ListItemsSource(&AvailableLensFileWeakPtrs)
 			.OnGenerateRow_Lambda([](TWeakObjectPtr<ULensFile> Item, const TSharedRef<STableViewBase>& OwnerTable) -> TSharedRef<ITableRow>
 			{
 				FString Name = Item.IsValid() ? Item->GetName() : TEXT("Invalid");
@@ -624,7 +631,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildLensCalibrationStep()
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 16)
 	[
 		SNew(SBorder)
-		.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+		.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
 		.Padding(12)
 		[
 			SNew(SVerticalBox)
@@ -679,7 +686,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildLensCalibrationStep()
 	+ SVerticalBox::Slot().AutoHeight()
 	[
 		SNew(SBorder)
-		.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+		.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
 		.Padding(12)
 		[
 			SNew(SVerticalBox)
@@ -760,16 +767,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildSensorSettingsStep()
 		+ SVerticalBox::Slot().AutoHeight()
 		[
 			SNew(SComboBox<TSharedPtr<FString>>)
-			.OptionsSource_Lambda([this]() -> TArray<TSharedPtr<FString>>
-			{
-				TArray<TSharedPtr<FString>> Options;
-				for (const FVector2D& Size : SensorPresets)
-				{
-					FString Name = ULensSetupUtility::GetSensorPresetName(Size);
-					Options.Add(MakeShareable(new FString(FString::Printf(TEXT("%s (%.1fx%.1f mm)"), *Name, Size.X, Size.Y))));
-				}
-				return Options;
-			})
+			.OptionsSource(&CachedSensorOptions)
 			.OnSelectionChanged_Lambda([this](TSharedPtr<FString> NewValue, ESelectInfo::Type)
 			{
 				if (NewValue.IsValid())
@@ -881,23 +879,25 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildAnchorPointStep()
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 12)
 	[ SNew(STextBlock).Text(LOCTEXT("AnchorDesc", "The anchor point is the origin for all tracking data. Set position to match your physical tracking system origin.")).AutoWrapText(true) ]
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 12)
-	.Visibility_Lambda([this]() -> EVisibility { return CameraConfig.bCreateAnchorPoint ? EVisibility::Visible : EVisibility::Collapsed; })
 	[
-		SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
-		[ SNew(STextBlock).Text(LOCTEXT("AnchorPos", "Position (X, Y, Z):")).Font(FCoreStyle::GetDefaultFontStyle("Bold", 12)) ]
-		+ SVerticalBox::Slot().AutoHeight()
+		SNew(SBox).Visibility(this, &SFonixFlowTrackerSetupWizard::GetAnchorPointVisibility)
 		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(0, 0, 4, 0)
-			[ SNew(SEditableTextBox).Text(FText::FromString(FString::SanitizeFloat(CameraConfig.AnchorLocation.X)))
-				.OnTextCommitted_Lambda([this](const FText& Text, ETextCommit::Type) { CameraConfig.AnchorLocation.X = FCString::Atof(*Text.ToString()); }).HintText(LOCTEXT("X", "X")) ]
-			+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(4, 0, 4, 0)
-			[ SNew(SEditableTextBox).Text(FText::FromString(FString::SanitizeFloat(CameraConfig.AnchorLocation.Y)))
-				.OnTextCommitted_Lambda([this](const FText& Text, ETextCommit::Type) { CameraConfig.AnchorLocation.Y = FCString::Atof(*Text.ToString()); }).HintText(LOCTEXT("Y", "Y")) ]
-			+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(4, 0, 0, 0)
-			[ SNew(SEditableTextBox).Text(FText::FromString(FString::SanitizeFloat(CameraConfig.AnchorLocation.Z)))
-				.OnTextCommitted_Lambda([this](const FText& Text, ETextCommit::Type) { CameraConfig.AnchorLocation.Z = FCString::Atof(*Text.ToString()); }).HintText(LOCTEXT("Z", "Z")) ]
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
+			[ SNew(STextBlock).Text(LOCTEXT("AnchorPos", "Position (X, Y, Z):")).Font(FCoreStyle::GetDefaultFontStyle("Bold", 12)) ]
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(0, 0, 4, 0)
+				[ SNew(SEditableTextBox).Text(FText::FromString(FString::SanitizeFloat(CameraConfig.AnchorLocation.X)))
+					.OnTextCommitted_Lambda([this](const FText& Text, ETextCommit::Type) { CameraConfig.AnchorLocation.X = FCString::Atof(*Text.ToString()); }).HintText(LOCTEXT("X", "X")) ]
+				+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(4, 0, 4, 0)
+				[ SNew(SEditableTextBox).Text(FText::FromString(FString::SanitizeFloat(CameraConfig.AnchorLocation.Y)))
+					.OnTextCommitted_Lambda([this](const FText& Text, ETextCommit::Type) { CameraConfig.AnchorLocation.Y = FCString::Atof(*Text.ToString()); }).HintText(LOCTEXT("Y", "Y")) ]
+				+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(4, 0, 0, 0)
+				[ SNew(SEditableTextBox).Text(FText::FromString(FString::SanitizeFloat(CameraConfig.AnchorLocation.Z)))
+					.OnTextCommitted_Lambda([this](const FText& Text, ETextCommit::Type) { CameraConfig.AnchorLocation.Z = FCString::Atof(*Text.ToString()); }).HintText(LOCTEXT("Z", "Z")) ]
+			]
 		]
 	]
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 16, 0, 0)
@@ -1060,4 +1060,4 @@ void SFonixFlowTrackerSetupWizard::ApplySetup()
 	if (OnSetupComplete.IsBound()) OnSetupComplete.Execute();
 }
 
-#undef LOCTEXT_NAMESPACE
+#undef LOCTEXT_NAMESPACEENDOFFILEENDOFFILEENDOFFILE

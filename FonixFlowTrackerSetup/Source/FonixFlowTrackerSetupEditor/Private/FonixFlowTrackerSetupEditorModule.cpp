@@ -12,7 +12,7 @@
 #include "Widgets/Docking/SDockTab.h"
 #include "Widgets/Images/SImage.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
-#include "EditorStyleSet.h"
+#include "Styling/AppStyle.h"
 #include "Engine/World.h"
 
 #define LOCTEXT_NAMESPACE "FonixFlowTrackerSetupEditor"
@@ -104,7 +104,7 @@ void FFonixFlowTrackerSetupEditorModule::StartupModule()
 void FFonixFlowTrackerSetupEditorModule::ShutdownModule()
 {
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(MainPanelTabId);
-	UToolMenus::UnRegisterOwnerByPluginName("FonixFlowTrackerSetup");
+	UToolMenus::UToolMenus::Get()->UnregisterOwnerByName("FonixFlowTrackerSetup");
 	FFonixFlowTrackerSetupStyle::Shutdown();
 }
 

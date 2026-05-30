@@ -6,8 +6,8 @@
 #include "Tables/EncodersTable.h"
 #include "Tables/FocalLengthTable.h"
 #include "Tables/ImageCenterTable.h"
-#include "Camera/CineCameraComponent.h"
-#include "Camera/CineCameraActor.h"
+#include "CineCameraComponent.h"
+#include "CineCameraActor.h"
 #include "LensComponent.h"
 #include "Engine/AssetManager.h"
 #include "Engine/ObjectLibrary.h"
@@ -201,7 +201,7 @@ void ULensSetupUtility::PopulateImageCenterTable(ULensFile* LensFile, const FLen
 	FImageCenterInfo ImageCenterInfo;
 	ImageCenterInfo.PrincipalPoint = FVector2D(0.5f, 0.5f); // Center of sensor
 
-	LensFile->ImageCenterTable.AddPoint(FocusValue, ZoomValue, ImageCenterInfo, KINDA_SMALL_NUMBER);
+	LensFile->ImageCenterTable.AddPoint(FocusValue, ZoomValue, ImageCenterInfo, KINDA_SMALL_NUMBER, true);
 
 	UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Populated image center table with default center point"));
 }
@@ -218,8 +218,8 @@ void ULensSetupUtility::ConfigureCineCamera(UCineCameraComponent* Camera, const 
 	// Set lens settings
 	Camera->LensSettings.MinFocalLength = Config.FocalLengthMinMM;
 	Camera->LensSettings.MaxFocalLength = Config.FocalLengthMaxMM;
-	Camera->LensSettings.MinAperture = 1.2f; // Common minimum
-	Camera->LensSettings.MaxAperture = 22.0f; // Common maximum
+	Camera->LensSettings.MinFStop = 1.2f; // Common minimum
+	Camera->LensSettings.MaxFStop = 22.0f; // Common maximum
 
 	// Set focus settings
 	Camera->FocusSettings.ManualFocusDistance = Config.FocusDistanceMinCM; // Start at min
@@ -253,7 +253,7 @@ void ULensSetupUtility::ConfigureLensComponent(ULensComponent* LensComp, ULensFi
 	}
 
 	// Set filmback override to use lens file sensor dimensions
-	LensComp->SetFilmbackOverrideSource(EFilmbackOverrideSource::LensFile);
+	LensComp->SetFilmbackOverrideSetting(EFilmbackOverrideSource::LensFile);
 
 	// Set distortion source to lens file
 	LensComp->SetDistortionSource(EDistortionSource::LensFile);

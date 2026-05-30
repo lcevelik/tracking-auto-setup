@@ -82,16 +82,26 @@ private:
 	/** Camera picker helpers */
 	void RefreshCameraList();
 	TArray<ACineCameraActor*> AvailableCameras;
+	TArray<TWeakObjectPtr<ACineCameraActor>> AvailableCameraWeakPtrs;
 	TSharedPtr<SListView<TWeakObjectPtr<ACineCameraActor>>> CameraListView;
 
 	/** Lens file picker helpers */
 	void RefreshLensFileList();
 	TArray<ULensFile*> AvailableLensFiles;
+	TArray<TWeakObjectPtr<ULensFile>> AvailableLensFileWeakPtrs;
 	TSharedPtr<SListView<TWeakObjectPtr<ULensFile>>> LensFileListView;
 
 	/** Sensor presets */
 	TArray<FVector2D> SensorPresets;
+	TArray<TSharedPtr<FString>> CachedSensorOptions;
 	TSharedPtr<SComboBox<TSharedPtr<FString>>> SensorPresetCombo;
+
+	/** Visibility helpers */
+	EVisibility GetAnchorPointVisibility() const { return CameraConfig.bCreateAnchorPoint ? EVisibility::Visible : EVisibility::Collapsed; }
+	EVisibility GetCreateCameraVisibility() const { return CameraConfig.bCreateNewCamera ? EVisibility::Visible : EVisibility::Collapsed; }
+	EVisibility GetExistingCameraVisibility() const { return !CameraConfig.bCreateNewCamera ? EVisibility::Visible : EVisibility::Collapsed; }
+	EVisibility GetCreateLensVisibility() const { return CameraConfig.LensConfig.bCreateNewLensFile ? EVisibility::Visible : EVisibility::Collapsed; }
+	EVisibility GetExistingLensVisibility() const { return !CameraConfig.LensConfig.bCreateNewLensFile ? EVisibility::Visible : EVisibility::Collapsed; }
 
 	/** Apply the tracking setup */
 	void ApplySetup();

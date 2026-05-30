@@ -47,7 +47,7 @@ void SFonixFlowTrackerSetupPanel::Construct(const FArguments& InArgs)
 			.AutoWidth()
 			[
 				SNew(SButton)
-				.ButtonStyle(FEditorStyle::Get(), "FlatButton.Default")
+				.ButtonStyle(FAppStyle::Get(), "FlatButton.Default")
 				.OnClicked_Lambda([this]() -> FReply
 				{
 					// Switch to wizard content
@@ -80,7 +80,7 @@ void SFonixFlowTrackerSetupPanel::Construct(const FArguments& InArgs)
 			.Padding(4, 0, 0, 0)
 			[
 				SNew(SButton)
-				.ButtonStyle(FEditorStyle::Get(), "FlatButton.Default")
+				.ButtonStyle(FAppStyle::Get(), "FlatButton.Default")
 				.OnClicked_Lambda([this]() -> FReply
 				{
 					// Switch to AI chat content
@@ -113,7 +113,7 @@ void SFonixFlowTrackerSetupPanel::Construct(const FArguments& InArgs)
 			.Padding(4, 0, 0, 0)
 			[
 				SNew(SButton)
-				.ButtonStyle(FEditorStyle::Get(), "FlatButton.Default")
+				.ButtonStyle(FAppStyle::Get(), "FlatButton.Default")
 				.OnClicked_Lambda([this]() -> FReply
 				{
 					// Quick setup action
@@ -146,7 +146,7 @@ void SFonixFlowTrackerSetupPanel::Construct(const FArguments& InArgs)
 		.FillHeight(1.0f)
 		[
 			SNew(SBorder)
-			.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+			.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
 			.Padding(0)
 			[
 				SAssignNew(WizardWidget, SFonixFlowTrackerSetupWizard)
@@ -158,7 +158,7 @@ void SFonixFlowTrackerSetupPanel::Construct(const FArguments& InArgs)
 TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildHeader()
 {
 	return SNew(SBorder)
-	.BorderImage(FEditorStyle::GetBrush("ToolPanel.DarkGroupBorder"))
+	.BorderImage(FAppStyle::GetBrush("ToolPanel.DarkGroupBorder"))
 	.Padding(12, 8)
 	[
 		SNew(SHorizontalBox)
@@ -209,7 +209,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildHeader()
 		.VAlign(VAlign_Center)
 		[
 			SNew(SBorder)
-			.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+			.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
 			.Padding(8, 4)
 			[
 				SNew(STextBlock)
