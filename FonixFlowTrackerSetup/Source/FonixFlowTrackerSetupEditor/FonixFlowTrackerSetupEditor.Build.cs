@@ -29,7 +29,7 @@ public class FonixFlowTrackerSetupEditor : ModuleRules
 			"PropertyEditor",
 			"WorkspaceMenuStructure",
 			"InputCore",
-			"Http",
+			"HTTP",
 			"Json",
 			"JsonUtilities",
 			"CinematicCamera",
