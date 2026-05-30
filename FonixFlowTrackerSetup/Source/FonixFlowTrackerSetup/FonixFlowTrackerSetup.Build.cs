@@ -19,7 +19,6 @@ public class FonixFlowTrackerSetup : ModuleRules
 			"LiveLinkCamera",
 			"CameraCalibrationCore",
 			"LensComponent",
-			"VCamCore",
 			"DeveloperSettings",
 			"CinematicCamera"
 		});
@@ -28,11 +27,20 @@ public class FonixFlowTrackerSetup : ModuleRules
 		{
 			"Slate",
 			"SlateCore",
-			"InputCore",
-			"EditorStyle",
-			"ToolMenus",
-			"UnrealEd",
-			"LevelEditor"
+			"InputCore"
 		});
+
+		// Editor-only dependencies
+		if (Target.bBuildEditor)
+		{
+			PrivateDependencyModuleNames.AddRange(new string[]
+			{
+				"EditorStyle",
+				"ToolMenus",
+				"UnrealEd",
+				"LevelEditor",
+				"VCamCore"
+			});
+		}
 	}
 }
