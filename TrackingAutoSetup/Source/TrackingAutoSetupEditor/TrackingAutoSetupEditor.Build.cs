@@ -19,6 +19,7 @@ public class TrackingAutoSetupEditor : ModuleRules
 			"LiveLinkComponents",
 			"LiveLinkCamera",
 			"CameraCalibrationCore",
+			"LensComponent",
 			"Slate",
 			"SlateCore",
 			"UnrealEd",

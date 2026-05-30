@@ -18,6 +18,7 @@ public class TrackingAutoSetup : ModuleRules
 			"LiveLinkComponents",
 			"LiveLinkCamera",
 			"CameraCalibrationCore",
+			"LensComponent",
 			"VirtualCameraCore"
 		});
 

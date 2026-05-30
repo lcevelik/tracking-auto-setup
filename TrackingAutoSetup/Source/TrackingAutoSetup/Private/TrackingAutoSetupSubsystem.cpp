@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Libor Cevelik. All Rights Reserved.
 
 #include "TrackingAutoSetupSubsystem.h"
+#include "LensSetupTypes.h"
 #include "ILiveLinkClient.h"
 #include "LiveLinkSourceFactory.h"
 #include "LiveLinkPresetTypes.h"
@@ -10,6 +11,7 @@
 #include "Camera/CineCameraActor.h"
 #include "Camera/CineCameraComponent.h"
 #include "LensFile.h"
+#include "LensComponent.h"
 #include "CameraCalibrationSubsystem.h"
 #include "Engine/World.h"
 #include "Engine/Engine.h"
@@ -75,8 +77,7 @@ FTrackingSetupResult UTrackingAutoSetupSubsystem::SetupTracking(
 		Result.AnchorPoint = Get().CreateAnchorPoint(World, CameraConfig);
 		if (Result.AnchorPoint)
 		{
-			// Attach camera to anchor
-			Result.CameraActor->AttachToActor(Result.AnchorPoint, 
+			Result.CameraActor->AttachToActor(Result.AnchorPoint,
 				FAttachmentTransformRules::KeepRelativeTransform);
 		}
 		else
@@ -92,15 +93,13 @@ FTrackingSetupResult UTrackingAutoSetupSubsystem::SetupTracking(
 		Get().ConfigureLiveLinkComponent(CineCamera, Result.LiveLinkSourceGuid, ConnectionSettings.SubjectName);
 	}
 
-	// Step 5: Configure lens file
-	Result.LensFile = Get().ConfigureLensFile(CameraConfig);
-	if (CineCamera && Result.LensFile)
+	// Step 5: Apply lens configuration (creates lens file, configures camera + lens component)
+	if (CineCamera)
 	{
-		// Wire lens file into camera controller
-		ULiveLinkCameraController* CameraController = CineCamera->FindComponentByClass<ULiveLinkCameraController>();
-		if (CameraController)
+		Result.LensFile = ULensSetupUtility::ApplyLensConfiguration(CineCamera, CameraConfig.LensConfig);
+		if (!Result.LensFile)
 		{
-			CameraController->LensFilePicker.LensFile = Result.LensFile;
+			Result.Warnings.Add(TEXT("Failed to create lens file, camera configured without lens calibration"));
 		}
 	}
 
@@ -111,9 +110,11 @@ FTrackingSetupResult UTrackingAutoSetupSubsystem::SetupTracking(
 	}
 
 	Result.bSuccess = true;
-	Result.Message = FString::Printf(TEXT("Tracking setup complete: %s on port %d"), 
+	Result.Message = FString::Printf(TEXT("Tracking setup complete: %s on %s"),
 		*ConnectionSettings.SubjectName,
-		ConnectionSettings.Protocol == ETrackingProtocol::FreeD ? ConnectionSettings.FreeDPort : ConnectionSettings.OpenTrackSourceNumber);
+		ConnectionSettings.Protocol == ETrackingProtocol::FreeD
+			? *FString::Printf(TEXT("%s:%d"), *ConnectionSettings.IPAddress, ConnectionSettings.FreeDPort)
+			: *FString::Printf(TEXT("OpenTrack source #%d"), ConnectionSettings.OpenTrackSourceNumber));
 
 	return Result;
 }
@@ -163,7 +164,6 @@ bool UTrackingAutoSetupSubsystem::RemoveTrackingSetup(
 {
 	if (!WorldContextObject) return false;
 
-	// Remove Live Link source
 	ILiveLinkClient* LiveLinkClient = nullptr;
 	if (FModuleManager::Get().IsModuleLoaded("LiveLink"))
 	{
@@ -179,7 +179,6 @@ bool UTrackingAutoSetupSubsystem::RemoveTrackingSetup(
 		LiveLinkClient->RemoveSource(LiveLinkSourceGuid);
 	}
 
-	// Destroy camera actor if requested
 	if (CameraActor && CameraActor->IsValidLowLevel())
 	{
 		CameraActor->Destroy();
@@ -208,7 +207,6 @@ FGuid UTrackingAutoSetupSubsystem::CreateLiveLinkSource(const FTrackingConnectio
 		return SourceGuid;
 	}
 
-	// Find the appropriate source factory based on protocol
 	IModularFeatures& ModularFeatures = IModularFeatures::Get();
 	TArray<ULiveLinkSourceFactory*> Factories = ModularFeatures.GetModularFeatureImplementations<ULiveLinkSourceFactory>();
 
@@ -219,7 +217,6 @@ FGuid UTrackingAutoSetupSubsystem::CreateLiveLinkSource(const FTrackingConnectio
 	{
 	case ETrackingProtocol::FreeD:
 	{
-		// Find FreeD factory
 		for (ULiveLinkSourceFactory* Factory : Factories)
 		{
 			if (Factory && Factory->GetSourceDisplayName().ToString().Contains(TEXT("FreeD")))
@@ -241,7 +238,6 @@ FGuid UTrackingAutoSetupSubsystem::CreateLiveLinkSource(const FTrackingConnectio
 
 	case ETrackingProtocol::OpenTrackIO:
 	{
-		// Find OpenTrack IO factory
 		for (ULiveLinkSourceFactory* Factory : Factories)
 		{
 			if (Factory && Factory->GetSourceDisplayName().ToString().Contains(TEXT("OpenTrack")))
@@ -272,7 +268,6 @@ FGuid UTrackingAutoSetupSubsystem::CreateLiveLinkSource(const FTrackingConnectio
 		return SourceGuid;
 	}
 
-	// Create the source
 	TSharedPtr<ILiveLinkSource> NewSource = TargetFactory->CreateSource(ConnectionString);
 	if (NewSource.IsValid())
 	{
@@ -337,7 +332,6 @@ AActor* UTrackingAutoSetupSubsystem::CreateAnchorPoint(UWorld* World, const FCam
 	{
 		AnchorActor->SetActorLabel(Config.CameraName + TEXT("_Anchor"));
 
-		// Add a root scene component
 		USceneComponent* RootComp = NewObject<USceneComponent>(AnchorActor);
 		RootComp->SetWorldLocation(Config.AnchorLocation);
 		RootComp->SetWorldRotation(Config.AnchorRotation);
@@ -357,7 +351,6 @@ void UTrackingAutoSetupSubsystem::ConfigureLiveLinkComponent(
 {
 	if (!Camera) return;
 
-	// Add LiveLinkComponentController if not present
 	ULiveLinkComponentController* LLController = Camera->FindComponentByClass<ULiveLinkComponentController>();
 	if (!LLController)
 	{
@@ -366,49 +359,19 @@ void UTrackingAutoSetupSubsystem::ConfigureLiveLinkComponent(
 		Camera->AddInstanceComponent(LLController);
 	}
 
-	// Set subject representation
 	FLiveLinkSubjectKey SubjectKey;
 	SubjectKey.Source = SourceGuid;
 	SubjectKey.SubjectName = FName(*SubjectName);
 
-	// Set the controller to use camera role
 	LLController->SubjectRepresentation.Role = ULiveLinkCameraRole::StaticClass();
 
 	UE_LOG(LogTemp, Log, TEXT("TrackingAutoSetup: Configured LiveLink component for subject '%s'"), *SubjectName);
-}
-
-ULensFile* UTrackingAutoSetupSubsystem::ConfigureLensFile(const FCameraSetupConfig& Config)
-{
-	if (Config.LensFile)
-	{
-		return Config.LensFile;
-	}
-
-	if (!Config.bAutoGenerateLensFile)
-	{
-		return nullptr;
-	}
-
-	// Create a new lens file asset
-	ULensFile* NewLensFile = NewObject<ULensFile>(GetTransientPackage(), 
-		MakeUniqueObjectName(GetTransientPackage(), ULensFile::StaticClass(), FName(*FString::Printf(TEXT("LensFile_%s"), *Config.CameraName))));
-
-	if (NewLensFile)
-	{
-		// Set default parameters - these would be populated from tracking data in a real scenario
-		NewLensFile->Modify();
-		UE_LOG(LogTemp, Log, TEXT("TrackingAutoSetup: Created lens file '%s'"), *NewLensFile->GetName());
-	}
-
-	return NewLensFile;
 }
 
 void UTrackingAutoSetupSubsystem::ConfigureVirtualCamera(ACineCameraActor* Camera, const FCameraSetupConfig& Config)
 {
 	if (!Camera) return;
 
-	// Virtual camera integration would be configured here
-	// This requires the VirtualCameraCore plugin to be enabled
 	UE_LOG(LogTemp, Log, TEXT("TrackingAutoSetup: Virtual camera integration configured"));
 }
 

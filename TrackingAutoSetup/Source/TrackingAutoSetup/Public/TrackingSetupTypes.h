@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "LensSetupTypes.h"
 #include "TrackingSetupTypes.generated.h"
 
 /** Supported tracking protocols */
@@ -100,13 +101,9 @@ struct TRACKINGAUTOSETUP_API FCameraSetupConfig
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera", meta = (EditCondition = "bCreateAnchorPoint"))
 	FRotator AnchorRotation = FRotator::ZeroRotator;
 
-	/** Lens file asset to use (leave empty to create new) */
+	/** Lens configuration (encoder ranges, sensor, calibration) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lens")
-	ULensFile* LensFile = nullptr;
-
-	/** Auto-generate lens file from tracking data */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lens")
-	bool bAutoGenerateLensFile = true;
+	FLensConfiguration LensConfig;
 
 	/** Enable virtual camera integration */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Virtual Camera")

@@ -7,7 +7,6 @@
 #include "TrackingSetupTypes.h"
 #include "TrackingAutoSetupSubsystem.generated.h"
 
-class ULiveLinkCameraController;
 class ULensFile;
 class ACineCameraActor;
 class AActor;
@@ -27,7 +26,6 @@ public:
 
 	/**
 	 * Perform complete tracking setup with the given settings.
-	 * This is the main entry point for one-click setup.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Tracking Auto Setup", meta = (WorldContext = "WorldContextObject"))
 	static FTrackingSetupResult SetupTracking(
@@ -79,9 +77,6 @@ private:
 
 	/** Configure the Live Link component on the camera */
 	void ConfigureLiveLinkComponent(ACineCameraActor* Camera, const FGuid& SourceGuid, const FString& SubjectName);
-
-	/** Configure or create the lens file */
-	ULensFile* ConfigureLensFile(const FCameraSetupConfig& Config);
 
 	/** Wire up virtual camera if enabled */
 	void ConfigureVirtualCamera(ACineCameraActor* Camera, const FCameraSetupConfig& Config);

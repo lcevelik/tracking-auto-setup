@@ -6,6 +6,7 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/Views/SListView.h"
 #include "TrackingSetupTypes.h"
+#include "LensSetupTypes.h"
 
 class ACineCameraActor;
 class ULensFile;
@@ -16,21 +17,21 @@ enum class EWizardStep : uint8
 	Protocol,           // Step 1: Choose FreeD or OpenTrack
 	Network,            // Step 2: IP/Port configuration
 	Camera,             // Step 3: Pick existing or create new camera
-	LensCalibration,    // Step 4: Lens encoder range calibration
-	AnchorPoint,        // Step 5: Anchor point configuration
-	Review,             // Step 6: Review and apply
-	Complete            // Step 7: Done
+	LensSelection,      // Step 4: Select or create lens file
+	LensCalibration,    // Step 5: Lens encoder range calibration
+	SensorSettings,     // Step 6: Sensor/filmback configuration
+	AnchorPoint,        // Step 7: Anchor point configuration
+	Review,             // Step 8: Review and apply
+	Complete            // Step 9: Done
 };
 
 /**
  * Multi-step wizard for tracking setup.
- * Guides user through protocol, network, camera, lens calibration, and anchor setup.
  */
 class TRACKINGAUTOSETUPEDITOR_API STrackingSetupWizard : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(STrackingSetupWizard) {}
-		/** Called when wizard completes with settings */
 		SLATE_EVENT(FSimpleDelegate, OnSetupComplete)
 	SLATE_END_ARGS()
 
@@ -59,7 +60,9 @@ private:
 	TSharedRef<SWidget> BuildProtocolStep();
 	TSharedRef<SWidget> BuildNetworkStep();
 	TSharedRef<SWidget> BuildCameraStep();
+	TSharedRef<SWidget> BuildLensSelectionStep();
 	TSharedRef<SWidget> BuildLensCalibrationStep();
+	TSharedRef<SWidget> BuildSensorSettingsStep();
 	TSharedRef<SWidget> BuildAnchorPointStep();
 	TSharedRef<SWidget> BuildReviewStep();
 	TSharedRef<SWidget> BuildCompleteStep();
@@ -81,27 +84,18 @@ private:
 	TArray<ACineCameraActor*> AvailableCameras;
 	TSharedPtr<SListView<TWeakObjectPtr<ACineCameraActor>>> CameraListView;
 
-	/** Lens calibration state */
-	bool bIsCapturingMinRange = false;
-	bool bIsCapturingMaxRange = false;
-	int32 CurrentFocusEncoderMin = 0;
-	int32 CurrentFocusEncoderMax = 0x00FFFFFF;
-	int32 CurrentZoomEncoderMin = 0;
-	int32 CurrentZoomEncoderMax = 0x00FFFFFF;
+	/** Lens file picker helpers */
+	void RefreshLensFileList();
+	TArray<ULensFile*> AvailableLensFiles;
+	TSharedPtr<SListView<TWeakObjectPtr<ULensFile>>> LensFileListView;
 
-	/** Capture encoder values for lens calibration */
-	void OnCaptureFocusMin();
-	void OnCaptureFocusMax();
-	void OnCaptureZoomMin();
-	void OnCaptureZoomMax();
+	/** Sensor presets */
+	TArray<FVector2D> SensorPresets;
+	TSharedPtr<SComboBox<TSharedPtr<FString>>> SensorPresetCombo;
 
 	/** Apply the tracking setup */
 	void ApplySetup();
 
 	/** Delegate for setup completion */
 	FSimpleDelegate OnSetupComplete;
-
-	/** Step indicator widgets */
-	TArray<TSharedPtr<SWidget>> StepIndicators;
-	void UpdateStepIndicators();
 };
