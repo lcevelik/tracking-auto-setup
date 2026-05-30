@@ -31,10 +31,7 @@ public class TrackingAutoSetupEditor : ModuleRules
 			"InputCore",
 			"Http",
 			"Json",
-			"JsonUtilities",
-			"EditorFramework",
-			"EditorWidgets",
-			"Blutility"
+			"JsonUtilities"
 		});
 	}
 }
