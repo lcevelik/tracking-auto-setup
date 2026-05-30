@@ -620,11 +620,17 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 
 		if (Factory)
 		{
-			// Create source settings
-			ULiveLinkSourceSettings* Settings = NewObject<ULiveLinkSourceSettings>();
-			// The factory will handle the actual source creation
-			SourceGuid = LiveLinkClient->CreateSource(Factory->CreateSourceSettingsForProxy(Settings));
-			AddLog(FString::Printf(TEXT("  Source created via factory, GUID: %s"), *SourceGuid.ToString()));
+			// Create source via factory (connection string = struct export, or empty for defaults)
+			TSharedPtr<ILiveLinkSource> Source = Factory->CreateSource(TEXT(""));
+			if (Source.IsValid())
+			{
+				SourceGuid = LiveLinkClient->AddSource(Source);
+				AddLog(FString::Printf(TEXT("  Source created, GUID: %s"), *SourceGuid.ToString()));
+			}
+			else
+			{
+				AddLog(TEXT("  WARNING: Factory returned null source"));
+			}
 		}
 		else
 		{
