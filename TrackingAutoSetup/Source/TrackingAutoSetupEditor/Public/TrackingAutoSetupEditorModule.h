@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "Modules/ModuleManager.h"
 
+class SDockTab;
+
 class FTrackingAutoSetupEditorModule : public IModuleInterface
 {
 public:
@@ -12,20 +14,22 @@ public:
 	virtual void ShutdownModule() override;
 
 private:
-	/** Register toolbar buttons and menu entries */
+	/** Register toolbar buttons, menu entries, and tab spawners */
 	void RegisterMenus();
-	
-	/** Unregister toolbar buttons and menu entries */
 	void UnregisterMenus();
 
-	/** Callback for the "Setup FreeD Camera" action */
-	void OnSetupFreeDCamera();
-	
-	/** Callback for the "Setup OpenTrack Camera" action */
-	void OnSetupOpenTrackCamera();
-	
-	/** Callback for the "Tracking Setup Panel" action */
-	void OnOpenSetupPanel();
+	/** Tab spawners */
+	static const FName WizardTabId;
+	static const FName AIChatTabId;
+
+	TSharedRef<SDockTab> OnSpawnWizardTab(const FSpawnTabArgs& Args);
+	TSharedRef<SDockTab> OnSpawnAIChatTab(const FSpawnTabArgs& Args);
+
+	/** Callbacks for toolbar actions */
+	void OnOpenWizard();
+	void OnOpenAIChat();
+	void OnSetupFreeDQuick();
+	void OnSetupOpenTrackQuick();
 
 	/** Delegate handles for cleanup */
 	TSharedPtr<class FUICommandList> PluginCommands;

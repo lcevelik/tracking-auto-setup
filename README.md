@@ -6,6 +6,16 @@
 
 Automates the tedious multi-panel Live Link camera tracking configuration into a single click. Supports FreeD and OpenTrack IO protocols.
 
+### Features
+
+- **One-Click Setup** — Configure FreeD or OpenTrack camera tracking instantly
+- **Setup Wizard** — Step-by-step guided configuration
+- **AI Chat Assistant** — In-editor AI for tracking/VP questions
+- **Camera Picker** — Select existing CineCameraActors from your scene
+- **Lens Calibration** — Guided encoder range capture for focus/zoom
+- **Multi-Camera Support** — Configure multiple tracked cameras
+- **Rig Presets** — Panasonic, Sony, stYpe, Mosys, Ncam defaults
+
 ### Auto-configures:
 1. **Live Link Source** — FreeD/OpenTrack IO with correct port and settings
 2. **Up Vector** — Z-up orientation for FreeD
@@ -19,8 +29,38 @@ Automates the tedious multi-panel Live Link camera tracking configuration into a
 ### One-Click (Editor Toolbar)
 
 After enabling the plugin, use the toolbar buttons:
-- **Setup FreeD Camera** — Instant FreeD setup with defaults
-- **Setup OpenTrack Camera** — Instant OpenTrack IO setup
+- **Tracking Wizard** — Full guided setup
+- **Tracking AI** — AI chat assistant
+- **Quick Setup** → FreeD/OpenTrack — Instant setup with defaults
+
+### Setup Wizard
+
+The wizard walks you through:
+1. **Protocol Selection** — FreeD or OpenTrack IO + rig preset
+2. **Network Configuration** — IP address, port, multicast settings
+3. **Camera Selection** — Create new or pick existing CineCameraActor
+4. **Lens Calibration** — Rotate lenses to min/max positions to capture encoder ranges
+5. **Anchor Point** — Configure tracking origin position
+6. **Review & Apply** — Confirm all settings
+
+### AI Chat Assistant
+
+Ask questions about:
+- FreeD protocol configuration
+- OpenTrack IO setup
+- Lens calibration best practices
+- Camera tracking workflows
+- Virtual Production tips
+
+Configure API key in project config:
+```ini
+[/Script/TrackingAutoSetup.TrackingAutoSetupSubsystem]
+AIAPIKey=your-api-key-here
+AIEndpoint=https://openrouter.ai/api/v1/chat/completions
+AIModel=anthropic/claude-sonnet-4
+```
+
+Or set environment variable: `TRACKING_AI_API_KEY`
 
 ### Blueprint
 
@@ -39,27 +79,11 @@ FTrackingSetupResult Result = UTrackingAutoSetupSubsystem::SetupOpenTrackCamera(
     1,               // Source number
     "MainCamera"     // Name
 );
-```
 
-### Full Configuration
-
-```cpp
-FTrackingConnectionSettings ConnSettings;
-ConnSettings.Protocol = ETrackingProtocol::FreeD;
-ConnSettings.IPAddress = "192.168.1.100";
-ConnSettings.FreeDPort = 40000;
-ConnSettings.SubjectName = "Camera1";
-
+// Use existing camera
 FCameraSetupConfig CamConfig;
-CamConfig.CameraName = "TrackedCamera";
-CamConfig.bCreateNewCamera = true;
-CamConfig.bCreateAnchorPoint = true;
-CamConfig.bAutoGenerateLensFile = true;
-CamConfig.bEnableVirtualCamera = false;
-
-FTrackingSetupResult Result = UTrackingAutoSetupSubsystem::SetupTracking(
-    WorldContextObject, ConnSettings, CamConfig
-);
+CamConfig.bCreateNewCamera = false;
+CamConfig.ExistingCamera = MyExistingCameraActor;
 ```
 
 ## Supported Protocols
@@ -77,6 +101,15 @@ FTrackingSetupResult Result = UTrackingAutoSetupSubsystem::SetupTracking(
 - **stYpe** — stYpe RedSpy/FreeD defaults
 - **Mosys** — Mosys camera tracking defaults
 - **Ncam** — Ncam AR tracking defaults
+
+## Lens Calibration
+
+The wizard guides you through encoder range calibration:
+
+1. **Focus Distance** — Rotate focus ring to MIN, capture. Rotate to MAX, capture.
+2. **Focal Length** — Rotate zoom ring to MIN, capture. Rotate to MAX, capture.
+
+This maps raw encoder values (0-16777215 for 24-bit) to physical lens values.
 
 ## Requirements
 

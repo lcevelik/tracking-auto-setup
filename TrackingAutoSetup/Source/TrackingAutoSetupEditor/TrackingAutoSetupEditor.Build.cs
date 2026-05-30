@@ -26,7 +26,11 @@ public class TrackingAutoSetupEditor : ModuleRules
 			"ToolMenus",
 			"EditorStyle",
 			"PropertyEditor",
-			"WorkspaceMenuStructure"
+			"WorkspaceMenuStructure",
+			"InputCore",
+			"Http",
+			"Json",
+			"JsonUtilities"
 		});
 	}
 }
