@@ -21,6 +21,8 @@
 #include "LensComponent.h"
 #include "LiveLinkComponentController.h"
 #include "Roles/LiveLinkCameraRole.h"
+#include "ILiveLinkClient.h"
+#include "LiveLinkSourceFactory.h"
 #include "Engine/World.h"
 #include "Engine/Engine.h"
 #include "EngineUtils.h"
@@ -338,7 +340,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildCalibrationSection()
 		.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
 	]
 
-	// ── Focus Distance Encoder ──
+	// Focus Distance
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 4, 0, 4)
 	[
 		SNew(SBorder)
@@ -373,7 +375,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildCalibrationSection()
 		]
 	]
 
-	// ── Focal Length Encoder ──
+	// Focal Length
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
 	[
 		SNew(SBorder)
@@ -493,7 +495,6 @@ void SFonixFlowTrackerSetupPanel::DetectLocalIP()
 {
 	LocalIPAddress = TEXT("127.0.0.1");
 
-	// Try platform socket subsystem first
 	bool bCanBindAll = false;
 	TSharedPtr<FInternetAddr> Addr = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->GetLocalHostAddr(*GLog, bCanBindAll);
 	if (Addr.IsValid())
@@ -504,8 +505,6 @@ void SFonixFlowTrackerSetupPanel::DetectLocalIP()
 			LocalIPAddress = ResolvedIP;
 		}
 	}
-
-	AddLog(FString::Printf(TEXT("Local IP detected: %s"), *LocalIPAddress));
 }
 
 void SFonixFlowTrackerSetupPanel::AddLog(const FString& Message)
@@ -518,12 +517,12 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 {
 	bSetupRunning = true;
 	bSetupComplete = false;
+	bSetupSuccess = false;
 	SetupLog.Empty();
 
 	AddLog(TEXT("=== Starting One-Click Setup ==="));
 	AddLog(FString::Printf(TEXT("Protocol: %s"),
 		SelectedProtocol == ETrackingProtocol::FreeD ? TEXT("3D Protocol (FreeD)") : TEXT("OpenTrack IO")));
-	AddLog(FString::Printf(TEXT("Listening: 0.0.0.0:%d"), ListeningPort));
 
 	UWorld* World = GEditor->GetEditorWorldContext().World();
 	if (!World)
@@ -531,22 +530,22 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 		AddLog(TEXT("ERROR: Could not get editor world"));
 		bSetupRunning = false;
 		bSetupComplete = true;
-		bSetupSuccess = false;
 		return;
 	}
 
-	// Step 1: Find or create CineCameraActor
-	AddLog(TEXT("Step 1: Finding CineCameraActor in level..."));
+	// ── Step 1: Find CineCameraActor ─────────────────────────────────
+	AddLog(TEXT("Step 1: Finding CineCameraActor..."));
 	ACineCameraActor* CineCamera = nullptr;
 	for (TActorIterator<ACineCameraActor> It(World); It; ++It)
 	{
 		CineCamera = *It;
+		AddLog(FString::Printf(TEXT("  Found: %s"), *CineCamera->GetActorLabel()));
 		break;
 	}
 
 	if (!CineCamera)
 	{
-		AddLog(TEXT("  No CineCameraActor found — creating new one"));
+		AddLog(TEXT("  No CineCameraActor in level — creating one"));
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Name = TEXT("TrackedCamera");
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -555,64 +554,90 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 			FVector::ZeroVector,
 			FRotator::ZeroRotator,
 			SpawnParams);
-		if (CineCamera)
-		{
-			CineCamera->SetActorLabel(TEXT("TrackedCamera"));
-		}
+#if WITH_EDITOR
+		if (CineCamera) CineCamera->SetActorLabel(TEXT("TrackedCamera"));
+#endif
 	}
 
 	if (!CineCamera)
 	{
-		AddLog(TEXT("ERROR: Failed to find or create CineCameraActor"));
+		AddLog(TEXT("ERROR: Failed to create CineCameraActor"));
 		bSetupRunning = false;
 		bSetupComplete = true;
-		bSetupSuccess = false;
 		return;
 	}
-	AddLog(FString::Printf(TEXT("  Using camera: %s"), *CineCamera->GetActorLabel()));
 
-	// Step 2: Add LiveLinkComponentController
-	AddLog(TEXT("Step 2: Adding Live Link Component Controller..."));
+	// ── Step 2: Add LiveLinkComponentController ──────────────────────
+	AddLog(TEXT("Step 2: Adding LiveLinkComponentController..."));
+
+	// Remove existing if present (clean slate)
 	ULiveLinkComponentController* LLController = CineCamera->FindComponentByClass<ULiveLinkComponentController>();
-	if (!LLController)
+	if (LLController)
 	{
-		LLController = NewObject<ULiveLinkComponentController>(CineCamera, TEXT("LiveLinkController"));
-		LLController->RegisterComponent();
-		CineCamera->AddInstanceComponent(LLController);
-		AddLog(TEXT("  LiveLinkComponentController added"));
-	}
-	else
-	{
-		AddLog(TEXT("  LiveLinkComponentController already exists"));
+		AddLog(TEXT("  Removing existing LiveLinkComponentController"));
+		LLController->DestroyComponent();
+		LLController = nullptr;
 	}
 
-	// Step 3: Set subject role
+	LLController = NewObject<ULiveLinkComponentController>(CineCamera, TEXT("LiveLinkController"));
+	LLController->RegisterComponent();
+	CineCamera->AddInstanceComponent(LLController);
+	AddLog(TEXT("  LiveLinkComponentController created"));
+
+	// Set camera role
 	LLController->SubjectRepresentation.Role = ULiveLinkCameraRole::StaticClass();
 	AddLog(TEXT("  Subject role set to Camera"));
 
-	// Step 4: Create Live Link source via subsystem
-	AddLog(TEXT("Step 3: Configuring Live Link source (0.0.0.0:40000)..."));
-	FTrackingConnectionSettings ConnSettings;
-	ConnSettings.Protocol = SelectedProtocol;
-	ConnSettings.IPAddress = TEXT("0.0.0.0");
-	ConnSettings.FreeDPort = ListeningPort;
-	ConnSettings.SubjectName = SubjectName;
+	// ── Step 3: Create Live Link source ──────────────────────────────
+	AddLog(TEXT("Step 3: Creating Live Link source (0.0.0.0:40000)..."));
 
-	FCameraSetupConfig CamConfig;
-	CamConfig.bCreateNewCamera = false;
-	CamConfig.ExistingCamera = CineCamera;
-
-	FFonixFlowTrackerResult SubResult = UFonixFlowTrackerSetupSubsystem::SetupTracking(World, ConnSettings, CamConfig);
-	if (SubResult.LiveLinkSourceGuid.IsValid())
+	FGuid SourceGuid;
+	ILiveLinkClient* LiveLinkClient = nullptr;
+	IModularFeatures& ModularFeatures = IModularFeatures::Get();
+	if (ModularFeatures.IsModularFeatureAvailable(ILiveLinkClient::ModularFeatureName))
 	{
-		AddLog(FString::Printf(TEXT("  Live Link source created: %s"), *SubResult.LiveLinkSourceGuid.ToString()));
+		LiveLinkClient = &ModularFeatures.GetModularFeature<ILiveLinkClient>(ILiveLinkClient::ModularFeatureName);
+	}
+
+	if (LiveLinkClient)
+	{
+		// Try to create FreeD source via factory
+		// The LiveLinkFreeD plugin registers a factory that creates UDP receivers
+		ULiveLinkSourceFactory* Factory = nullptr;
+
+		// Find the FreeD factory by iterating registered factories
+		for (TObjectIterator<ULiveLinkSourceFactory> It; It; ++It)
+		{
+			if (It->GetSourceDisplayName().ToString().Contains(TEXT("FreeD")) ||
+				It->GetSourceDisplayName().ToString().Contains(TEXT("UDP")) ||
+				It->GetSourceDisplayName().ToString().Contains(TEXT("3D")))
+			{
+				Factory = *It;
+				AddLog(FString::Printf(TEXT("  Found factory: %s"), *It->GetSourceDisplayName().ToString()));
+				break;
+			}
+		}
+
+		if (Factory)
+		{
+			// Create source settings
+			ULiveLinkSourceSettings* Settings = NewObject<ULiveLinkSourceSettings>();
+			// The factory will handle the actual source creation
+			SourceGuid = LiveLinkClient->CreateSource(Factory->CreateSourceSettingsForProxy(Settings));
+			AddLog(FString::Printf(TEXT("  Source created via factory, GUID: %s"), *SourceGuid.ToString()));
+		}
+		else
+		{
+			AddLog(TEXT("  WARNING: No FreeD/UDP factory found"));
+			AddLog(TEXT("  Make sure LiveLinkFreeD plugin is enabled in your project"));
+		}
 	}
 	else
 	{
-		AddLog(TEXT("  WARNING: Live Link source GUID empty — you may need to add the source manually"));
+		AddLog(TEXT("  WARNING: LiveLink client not available"));
 	}
 
-	// Step 5: Create lens file
+	// ── Step 4: Create lens file ─────────────────────────────────────
 	AddLog(TEXT("Step 4: Creating lens file..."));
 	FLensConfiguration LensConfig;
 	LensConfig.bCreateNewLensFile = true;
@@ -636,7 +661,7 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 		AddLog(TEXT("  WARNING: Lens file creation failed"));
 	}
 
-	// Step 6: Configure CineCamera lens settings
+	// ── Step 5: Configure CineCamera ─────────────────────────────────
 	AddLog(TEXT("Step 5: Configuring CineCamera lens settings..."));
 	UCineCameraComponent* CineComp = CineCamera->GetCineCameraComponent();
 	if (CineComp)
@@ -646,18 +671,20 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 		AddLog(FString::Printf(TEXT("  Focal length range: %.0f - %.0f mm"), FocalLengthMinMM, FocalLengthMaxMM));
 	}
 
-	// Done
+	// ── Done ─────────────────────────────────────────────────────────
 	AddLog(TEXT(""));
 	AddLog(TEXT("=== Setup Complete ==="));
-	AddLog(TEXT("Next steps:"));
-	AddLog(TEXT("  1. Verify Live Link shows green checkmark"));
-	AddLog(TEXT("  2. Rotate lens to min/max and use Calibration below"));
-	AddLog(TEXT("  3. Apply calibration to finalize lens file"));
+	AddLog(FString::Printf(TEXT("Camera: %s"), *CineCamera->GetActorLabel()));
+	AddLog(FString::Printf(TEXT("LiveLink Controller: %s"), LLController ? TEXT("OK") : TEXT("FAILED")));
+	AddLog(FString::Printf(TEXT("Source GUID: %s"), SourceGuid.IsValid() ? *SourceGuid.ToString() : TEXT("INVALID")));
+	AddLog(FString::Printf(TEXT("Lens File: %s"), LensFile ? *LensFile->GetName() : TEXT("FAILED")));
+	AddLog(TEXT(""));
+	AddLog(TEXT("Next: Open Live Link panel to verify source is active"));
+	AddLog(TEXT("Then: Rotate lens to min/max and use Calibration below"));
 
 	bSetupRunning = false;
 	bSetupComplete = true;
 	bSetupSuccess = true;
-	LastResult = SubResult;
 }
 
 void SFonixFlowTrackerSetupPanel::CaptureFocusMin()
@@ -693,11 +720,7 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 	AddLog(TEXT("=== Applying Calibration ==="));
 
 	UWorld* World = GEditor->GetEditorWorldContext().World();
-	if (!World)
-	{
-		AddLog(TEXT("ERROR: No editor world"));
-		return;
-	}
+	if (!World) { AddLog(TEXT("ERROR: No editor world")); return; }
 
 	ACineCameraActor* CineCamera = nullptr;
 	for (TActorIterator<ACineCameraActor> It(World); It; ++It)
@@ -706,11 +729,7 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 		break;
 	}
 
-	if (!CineCamera)
-	{
-		AddLog(TEXT("ERROR: No CineCameraActor found"));
-		return;
-	}
+	if (!CineCamera) { AddLog(TEXT("ERROR: No CineCameraActor found")); return; }
 
 	int32 FocusEncMin = (FocusEncoderMin / 10) - 1;
 	int32 FocusEncMax = (FocusEncoderMax / 10) - 1;
@@ -737,7 +756,7 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 	ULensFile* LensFile = ULensSetupUtility::ApplyLensConfiguration(CineCamera, LensConfig);
 	if (LensFile)
 	{
-		AddLog(FString::Printf(TEXT("Calibrated lens file created: %s"), *LensFile->GetName()));
+		AddLog(FString::Printf(TEXT("Calibrated lens file: %s"), *LensFile->GetName()));
 	}
 	else
 	{
@@ -749,7 +768,7 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 	{
 		CineComp->LensSettings.MinFocalLength = FocalLengthMinMM;
 		CineComp->LensSettings.MaxFocalLength = FocalLengthMaxMM;
-		AddLog(FString::Printf(TEXT("Camera lens range set: %.0f-%.0f mm"), FocalLengthMinMM, FocalLengthMaxMM));
+		AddLog(FString::Printf(TEXT("Camera lens range: %.0f-%.0f mm"), FocalLengthMinMM, FocalLengthMaxMM));
 	}
 
 	AddLog(TEXT("=== Calibration Applied ==="));
@@ -759,62 +778,41 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 // QUERIES
 // ═════════════════════════════════════════════════════════════════════
 
-FText SFonixFlowTrackerSetupPanel::GetIPAddressText() const
-{
-	return FText::FromString(LocalIPAddress);
-}
-
-FText SFonixFlowTrackerSetupPanel::GetPortText() const
-{
-	return FText::AsNumber(ListeningPort);
-}
+FText SFonixFlowTrackerSetupPanel::GetIPAddressText() const { return FText::FromString(LocalIPAddress); }
+FText SFonixFlowTrackerSetupPanel::GetPortText() const { return FText::AsNumber(ListeningPort); }
 
 FText SFonixFlowTrackerSetupPanel::GetFocusMinText() const
 {
-	if (bFocusMinCaptured)
-	{
-		return FText::Format(LOCTEXT("FocusMinFmt", "Minimum: {0}"), FText::AsNumber(FocusEncoderMin));
-	}
-	return LOCTEXT("FocusMinUncaptured", "Minimum: not captured");
+	return bFocusMinCaptured
+		? FText::Format(LOCTEXT("FocusMinFmt", "Minimum: {0}"), FText::AsNumber(FocusEncoderMin))
+		: LOCTEXT("FocusMinUncaptured", "Minimum: not captured");
 }
 
 FText SFonixFlowTrackerSetupPanel::GetFocusMaxText() const
 {
-	if (bFocusMaxCaptured)
-	{
-		return FText::Format(LOCTEXT("FocusMaxFmt", "Maximum: {0}"), FText::AsNumber(FocusEncoderMax));
-	}
-	return LOCTEXT("FocusMaxUncaptured", "Maximum: not captured");
+	return bFocusMaxCaptured
+		? FText::Format(LOCTEXT("FocusMaxFmt", "Maximum: {0}"), FText::AsNumber(FocusEncoderMax))
+		: LOCTEXT("FocusMaxUncaptured", "Maximum: not captured");
 }
 
 FText SFonixFlowTrackerSetupPanel::GetZoomMinText() const
 {
-	if (bZoomMinCaptured)
-	{
-		return FText::Format(LOCTEXT("ZoomMinFmt", "Minimum: {0}"), FText::AsNumber(ZoomEncoderMin));
-	}
-	return LOCTEXT("ZoomMinUncaptured", "Minimum: not captured");
+	return bZoomMinCaptured
+		? FText::Format(LOCTEXT("ZoomMinFmt", "Minimum: {0}"), FText::AsNumber(ZoomEncoderMin))
+		: LOCTEXT("ZoomMinUncaptured", "Minimum: not captured");
 }
 
 FText SFonixFlowTrackerSetupPanel::GetZoomMaxText() const
 {
-	if (bZoomMaxCaptured)
-	{
-		return FText::Format(LOCTEXT("ZoomMaxFmt", "Maximum: {0}"), FText::AsNumber(ZoomEncoderMax));
-	}
-	return LOCTEXT("ZoomMaxUncaptured", "Maximum: not captured");
+	return bZoomMaxCaptured
+		? FText::Format(LOCTEXT("ZoomMaxFmt", "Maximum: {0}"), FText::AsNumber(ZoomEncoderMax))
+		: LOCTEXT("ZoomMaxUncaptured", "Maximum: not captured");
 }
 
 FText SFonixFlowTrackerSetupPanel::GetSetupStatusText() const
 {
-	if (!bSetupComplete)
-	{
-		return LOCTEXT("StatusIdle", "Ready — click SETUP NOW to begin");
-	}
-	if (bSetupSuccess)
-	{
-		return LOCTEXT("StatusOK", "Setup complete — camera configured, Live Link source active. Use calibration below to fine-tune lens mappings.");
-	}
+	if (!bSetupComplete) return LOCTEXT("StatusIdle", "Ready — click SETUP NOW to begin");
+	if (bSetupSuccess) return LOCTEXT("StatusOK", "Setup complete — check log for details. Use calibration below to fine-tune.");
 	return LOCTEXT("StatusFail", "Setup encountered errors — check log below");
 }
 

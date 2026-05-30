@@ -23,13 +23,12 @@ public:
 	void Construct(const FArguments& InArgs);
 
 private:
-	// ── State ────────────────────────────────────────────────────────
+	// State
 	ETrackingProtocol SelectedProtocol = ETrackingProtocol::FreeD;
 	FString LocalIPAddress;
 	int32 ListeningPort = 40000;
 	FString SubjectName = TEXT("Camera");
 
-	// Calibration state
 	int32 FocusEncoderMin = 0;
 	int32 FocusEncoderMax = 0x00FFFFFF;
 	int32 ZoomEncoderMin = 0;
@@ -39,22 +38,17 @@ private:
 	bool bZoomMinCaptured = false;
 	bool bZoomMaxCaptured = false;
 
-	// Physical lens ranges (read from LiveLink once data flows)
 	float FocusDistanceMinCM = 60.0f;
 	float FocusDistanceMaxCM = 4095.0f;
 	float FocalLengthMinMM = 28.0f;
 	float FocalLengthMaxMM = 100.0f;
 
-	// Setup result
 	bool bSetupRunning = false;
 	bool bSetupComplete = false;
 	bool bSetupSuccess = false;
 	TArray<FString> SetupLog;
 
-	// Result from subsystem
-	FFonixFlowTrackerResult LastResult;
-
-	// ── UI Build ─────────────────────────────────────────────────────
+	// UI Build
 	TSharedRef<SWidget> BuildHeader();
 	TSharedRef<SWidget> BuildProtocolSection();
 	TSharedRef<SWidget> BuildNetworkSection();
@@ -63,7 +57,7 @@ private:
 	TSharedRef<SWidget> BuildStatusSection();
 	TSharedRef<SWidget> BuildLogSection();
 
-	// ── Actions ──────────────────────────────────────────────────────
+	// Actions
 	void RunOneClickSetup();
 	void CaptureFocusMin();
 	void CaptureFocusMax();
@@ -73,7 +67,7 @@ private:
 	void DetectLocalIP();
 	void AddLog(const FString& Message);
 
-	// ── Queries ──────────────────────────────────────────────────────
+	// Queries
 	FText GetIPAddressText() const;
 	FText GetPortText() const;
 	FText GetFocusMinText() const;
