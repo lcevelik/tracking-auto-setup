@@ -655,16 +655,29 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 	// ── Step 1: Add LiveLinkComponentController ──────────────────────
 	AddLog(TEXT("Step 1: Adding LiveLinkComponentController..."));
 
-	// Remove existing if present
-	ULiveLinkComponentController* LLController = CineCamera->FindComponentByClass<ULiveLinkComponentController>();
-	if (LLController)
+	// Mark actor as modified so editor tracks the change
+	CineCamera->Modify();
+
+	// Remove ALL existing LiveLinkComponentControllers (handles stale/cached ones)
+	TArray<ULiveLinkComponentController*> ExistingControllers;
+	for (UActorComponent* Comp : CineCamera->GetComponents())
 	{
-		AddLog(TEXT("  Removing existing controller"));
-		LLController->DestroyComponent();
-		LLController = nullptr;
+		ULiveLinkComponentController* Existing = Cast<ULiveLinkComponentController>(Comp);
+		if (Existing)
+		{
+			ExistingControllers.Add(Existing);
+		}
+	}
+	if (ExistingControllers.Num() > 0)
+	{
+		AddLog(FString::Printf(TEXT("  Removing %d existing controller(s)"), ExistingControllers.Num()));
+		for (ULiveLinkComponentController* Old : ExistingControllers)
+		{
+			Old->DestroyComponent();
+		}
 	}
 
-	LLController = NewObject<ULiveLinkComponentController>(CineCamera, TEXT("FonixFlowLiveLinkController"));
+	ULiveLinkComponentController* LLController = NewObject<ULiveLinkComponentController>(CineCamera, TEXT("FonixFlowLiveLinkController"));
 	LLController->RegisterComponent();
 	CineCamera->AddInstanceComponent(LLController);
 
@@ -680,8 +693,8 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 		AddLog(TEXT("  ERROR: Failed to add LiveLinkComponentController"));
 	}
 
-	// ── Step 2: Create Live Link source (0.0.0.0:40000) ─────────────
-	AddLog(TEXT("Step 2: Creating Live Link source..."));
+	// ── Step 2: Create Live Link FreeD source (0.0.0.0:40000) ──────
+	AddLog(TEXT("Step 2: Creating Live Link FreeD source..."));
 
 	FGuid SourceGuid;
 	ILiveLinkClient* LiveLinkClient = nullptr;
@@ -693,37 +706,72 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 
 	if (LiveLinkClient)
 	{
-		ULiveLinkSourceFactory* Factory = nullptr;
+		// Find the FreeD connection settings struct via reflection
+		UScriptStruct* FreeDSettingsStruct = nullptr;
+		for (TObjectIterator<UStruct> It; It; ++It)
+		{
+			if (It->GetName() == TEXT("LiveLinkFreeDConnectionSettings"))
+			{
+				FreeDSettingsStruct = *It;
+				break;
+			}
+		}
+
+		// Find the FreeD source factory
+		ULiveLinkSourceFactory* FreeDFactory = nullptr;
 		for (TObjectIterator<ULiveLinkSourceFactory> It; It; ++It)
 		{
 			FText Name = It->GetSourceDisplayName();
-			if (Name.ToString().Contains(TEXT("FreeD")) || Name.ToString().Contains(TEXT("3D")))
+			if (Name.ToString().Contains(TEXT("FreeD")))
 			{
-				Factory = *It;
+				FreeDFactory = *It;
 				AddLog(FString::Printf(TEXT("  Factory: %s"), *Name.ToString()));
 				break;
 			}
 		}
 
-		if (Factory)
+		if (FreeDFactory && FreeDSettingsStruct)
 		{
-			FString ConnectionString = TEXT("IPAddress=\"0.0.0.0\" UDPPortNumber=40000");
-			TSharedPtr<ILiveLinkSource> Source = Factory->CreateSource(ConnectionString);
+			// Construct settings and set 0.0.0.0 via reflection
+			TArray<uint8> SettingsMemory;
+			SettingsMemory.SetNumZeroed(FreeDSettingsStruct->GetStructureSize());
+			FreeDSettingsStruct->InitializeDefaultValue(SettingsMemory.GetData());
+
+			FStrProperty* IPProp = CastField<FStrProperty>(FreeDSettingsStruct->FindPropertyByName(FName("IPAddress")));
+			FUInt16Property* PortProp = CastField<FUInt16Property>(FreeDSettingsStruct->FindPropertyByName(FName("UDPPortNumber")));
+
+			if (IPProp) IPProp->SetPropertyValue_InContainer(SettingsMemory.GetData(), TEXT("0.0.0.0"));
+			if (PortProp) PortProp->SetPropertyValue_InContainer(SettingsMemory.GetData(), static_cast<uint16>(ListeningPort));
+
+			// Generate connection string via ExportText
+			FString ConnectionString;
+			FreeDSettingsStruct->ExportText(ConnectionString, SettingsMemory.GetData(), nullptr, nullptr, PPF_None, nullptr);
+
+			AddLog(FString::Printf(TEXT("  Connection: %s"), *ConnectionString));
+
+			TSharedPtr<ILiveLinkSource> Source = FreeDFactory->CreateSource(ConnectionString);
 			if (Source.IsValid())
 			{
 				SourceGuid = LiveLinkClient->AddSource(Source);
-				AddLog(FString::Printf(TEXT("  Source GUID: %s"), *SourceGuid.ToString()));
-				AddLog(TEXT("  Listening on 0.0.0.0:40000"));
+				AddLog(FString::Printf(TEXT("  Source created — GUID: %s"), *SourceGuid.ToString()));
+				AddLog(FString::Printf(TEXT("  Listening on 0.0.0.0:%d"), ListeningPort));
 			}
 			else
 			{
-				AddLog(TEXT("  WARNING: Factory returned null source"));
+				AddLog(TEXT("  ERROR: FreeD factory returned null source"));
 			}
+
+			FreeDSettingsStruct->DestroyStruct(SettingsMemory.GetData());
 		}
 		else
 		{
-			AddLog(TEXT("  WARNING: No FreeD factory found — enable LiveLinkFreeD plugin"));
+			if (!FreeDFactory) AddLog(TEXT("  ERROR: LiveLinkFreeD factory not found — enable LiveLinkFreeD plugin"));
+			if (!FreeDSettingsStruct) AddLog(TEXT("  ERROR: FLiveLinkFreeDConnectionSettings struct not found"));
 		}
+	}
+	else
+	{
+		AddLog(TEXT("  ERROR: LiveLink client not available"));
 	}
 
 	// ── Step 3: Configure CineCamera ─────────────────────────────────

@@ -37,6 +37,10 @@
 			"Enabled": true
 		},
 		{
+			"Name": "LiveLinkFreeD",
+			"Enabled": true
+		},
+		{
 			"Name": "CameraCalibrationCore",
 			"Enabled": true
 		},
