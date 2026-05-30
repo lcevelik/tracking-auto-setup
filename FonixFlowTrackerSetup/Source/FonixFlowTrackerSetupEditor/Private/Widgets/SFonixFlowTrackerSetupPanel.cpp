@@ -23,6 +23,7 @@
 #include "Roles/LiveLinkCameraRole.h"
 #include "ILiveLinkClient.h"
 #include "LiveLinkSourceFactory.h"
+
 #include "Engine/World.h"
 #include "Engine/Engine.h"
 #include "EngineUtils.h"
@@ -452,6 +453,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildStatusSection()
 // ═════════════════════════════════════════════════════════════════════
 // Log
 // ═════════════════════════════════════════════════════════════════════
+// Log
 
 TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildLogSection()
 {
@@ -570,25 +572,35 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 	// ── Step 2: Add LiveLinkComponentController ──────────────────────
 	AddLog(TEXT("Step 2: Adding LiveLinkComponentController..."));
 
-	// Remove existing if present (clean slate)
+	// Remove existing if present
 	ULiveLinkComponentController* LLController = CineCamera->FindComponentByClass<ULiveLinkComponentController>();
 	if (LLController)
 	{
-		AddLog(TEXT("  Removing existing LiveLinkComponentController"));
+		AddLog(TEXT("  Removing existing controller"));
 		LLController->DestroyComponent();
 		LLController = nullptr;
 	}
 
-	LLController = NewObject<ULiveLinkComponentController>(CineCamera, TEXT("LiveLinkController"));
+	// Create new component
+	LLController = NewObject<ULiveLinkComponentController>(CineCamera, TEXT("FonixFlowLiveLinkController"));
+	LLController->SetRelativeLocation(FVector::ZeroVector);
 	LLController->RegisterComponent();
 	CineCamera->AddInstanceComponent(LLController);
-	AddLog(TEXT("  LiveLinkComponentController created"));
 
-	// Set camera role
-	LLController->SubjectRepresentation.Role = ULiveLinkCameraRole::StaticClass();
-	AddLog(TEXT("  Subject role set to Camera"));
+	// Verify it was added
+	LLController = CineCamera->FindComponentByClass<ULiveLinkComponentController>();
+	if (LLController)
+	{
+		AddLog(TEXT("  LiveLinkComponentController added and verified"));
+		LLController->SubjectRepresentation.Role = ULiveLinkCameraRole::StaticClass();
+		AddLog(TEXT("  Subject role set to Camera"));
+	}
+	else
+	{
+		AddLog(TEXT("  ERROR: Failed to add LiveLinkComponentController"));
+	}
 
-	// ── Step 3: Create Live Link source ──────────────────────────────
+	// ── Step 3: Create Live Link source (0.0.0.0:40000) ─────────────
 	AddLog(TEXT("Step 3: Creating Live Link source (0.0.0.0:40000)..."));
 
 	FGuid SourceGuid;
@@ -601,27 +613,25 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 
 	if (LiveLinkClient)
 	{
-		// Try to create FreeD source via factory
-		// The LiveLinkFreeD plugin registers a factory that creates UDP receivers
 		ULiveLinkSourceFactory* Factory = nullptr;
-
-		// Find the FreeD factory by iterating registered factories
 		for (TObjectIterator<ULiveLinkSourceFactory> It; It; ++It)
 		{
-			if (It->GetSourceDisplayName().ToString().Contains(TEXT("FreeD")) ||
-				It->GetSourceDisplayName().ToString().Contains(TEXT("UDP")) ||
-				It->GetSourceDisplayName().ToString().Contains(TEXT("3D")))
+			FText Name = It->GetSourceDisplayName();
+			if (Name.ToString().Contains(TEXT("FreeD")) || Name.ToString().Contains(TEXT("3D")))
 			{
 				Factory = *It;
-				AddLog(FString::Printf(TEXT("  Found factory: %s"), *It->GetSourceDisplayName().ToString()));
+				AddLog(FString::Printf(TEXT("  Found factory: %s"), *Name.ToString()));
 				break;
 			}
 		}
 
 		if (Factory)
 		{
-			// Create source via factory (connection string = struct export, or empty for defaults)
-			TSharedPtr<ILiveLinkSource> Source = Factory->CreateSource(TEXT(""));
+			// Connection string format: struct property text for FLiveLinkFreeDConnectionSettings
+			FString ConnectionString = TEXT("IPAddress=\"0.0.0.0\" UDPPortNumber=40000");
+			AddLog(FString::Printf(TEXT("  Connection: %s"), *ConnectionString));
+
+			TSharedPtr<ILiveLinkSource> Source = Factory->CreateSource(ConnectionString);
 			if (Source.IsValid())
 			{
 				SourceGuid = LiveLinkClient->AddSource(Source);
@@ -634,8 +644,8 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 		}
 		else
 		{
-			AddLog(TEXT("  WARNING: No FreeD/UDP factory found"));
-			AddLog(TEXT("  Make sure LiveLinkFreeD plugin is enabled in your project"));
+			AddLog(TEXT("  WARNING: No FreeD factory found"));
+			AddLog(TEXT("  Enable LiveLinkFreeD plugin in Edit > Plugins"));
 		}
 	}
 	else
@@ -681,12 +691,13 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 	AddLog(TEXT(""));
 	AddLog(TEXT("=== Setup Complete ==="));
 	AddLog(FString::Printf(TEXT("Camera: %s"), *CineCamera->GetActorLabel()));
-	AddLog(FString::Printf(TEXT("LiveLink Controller: %s"), LLController ? TEXT("OK") : TEXT("FAILED")));
-	AddLog(FString::Printf(TEXT("Source GUID: %s"), SourceGuid.IsValid() ? *SourceGuid.ToString() : TEXT("INVALID")));
+	AddLog(FString::Printf(TEXT("LiveLink Controller: %s"),
+		CineCamera->FindComponentByClass<ULiveLinkComponentController>() ? TEXT("OK") : TEXT("FAILED")));
+	AddLog(FString::Printf(TEXT("Source: %s"),
+		SourceGuid.IsValid() ? *SourceGuid.ToString() : TEXT("Check Live Link panel")));
 	AddLog(FString::Printf(TEXT("Lens File: %s"), LensFile ? *LensFile->GetName() : TEXT("FAILED")));
 	AddLog(TEXT(""));
-	AddLog(TEXT("Next: Open Live Link panel to verify source is active"));
-	AddLog(TEXT("Then: Rotate lens to min/max and use Calibration below"));
+	AddLog(TEXT("Check Window > Live Link to verify source is active"));
 
 	bSetupRunning = false;
 	bSetupComplete = true;
