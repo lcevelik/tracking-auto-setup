@@ -2,89 +2,51 @@
 
 **Unreal Engine plugin for one-click Live Link camera tracking setup.**
 
-## What It Does
-
-Automates the tedious multi-panel Live Link camera tracking configuration into a single click. Supports FreeD and OpenTrack IO protocols.
-
-### Features
+## Features
 
 - **One-Click Setup** — Configure FreeD or OpenTrack camera tracking instantly
-- **Setup Wizard** — Step-by-step guided configuration
+- **Setup Wizard** — 9-step guided configuration
 - **AI Chat Assistant** — In-editor AI for tracking/VP questions
 - **Camera Picker** — Select existing CineCameraActors from your scene
+- **Lens File Creation** — Proper ULensFile with encoder tables, focal length, image center
 - **Lens Calibration** — Guided encoder range capture for focus/zoom
-- **Multi-Camera Support** — Configure multiple tracked cameras
-- **Rig Presets** — Panasonic, Sony, stYpe, Mosys, Ncam defaults
-
-### Auto-configures:
-1. **Live Link Source** — FreeD/OpenTrack IO with correct port and settings
-2. **Up Vector** — Z-up orientation for FreeD
-3. **Camera Component** — Assigns tracking to CineCameraActor
-4. **Anchor Point** — Creates and attaches tracking origin
-5. **Lens File** — Generates or configures lens calibration
-6. **Virtual Camera** — Wires lens and tracking into Virtual Camera system
+- **Sensor Presets** — Super 35, Alexa 35, RED, Full Frame, etc.
+- **Custom Toolbar Icon** — SVG icon with custom Slate style
+- **Python API** — Toolbar button setup via Python (Epic GDC 2024 pattern)
 
 ## Quick Start
 
-### One-Click (Editor Toolbar)
+### 1. Enable the Plugin
+Edit > Plugins > Search "Tracking Auto Setup" > Enable
 
-After enabling the plugin, use the toolbar buttons:
-- **Tracking Wizard** — Full guided setup
-- **Tracking AI** — AI chat assistant
-- **Quick Setup** → FreeD/OpenTrack — Instant setup with defaults
+### 2. Open the Panel
+- Click the **camera icon** in the Level Editor toolbar
+- Or: Tools > Tracking Auto Setup
 
-### Setup Wizard
+### 3. Follow the Wizard
+1. Select protocol (FreeD/OpenTrack)
+2. Configure network
+3. Pick camera (new or existing)
+4. Select/create lens file
+5. Calibrate lens encoders
+6. Set sensor dimensions
+7. Configure anchor point
+8. Review & apply
 
-The wizard walks you through:
-1. **Protocol Selection** — FreeD or OpenTrack IO + rig preset
-2. **Network Configuration** — IP address, port, multicast settings
-3. **Camera Selection** — Create new or pick existing CineCameraActor
-4. **Lens Calibration** — Rotate lenses to min/max positions to capture encoder ranges
-5. **Anchor Point** — Configure tracking origin position
-6. **Review & Apply** — Confirm all settings
+## Toolbar Button (Python)
 
-### AI Chat Assistant
+The plugin includes a Python script following Epic's GDC 2024 pattern:
 
-Ask questions about:
-- FreeD protocol configuration
-- OpenTrack IO setup
-- Lens calibration best practices
-- Camera tracking workflows
-- Virtual Production tips
-
-Configure API key in project config:
-```ini
-[/Script/TrackingAutoSetup.TrackingAutoSetupSubsystem]
-AIAPIKey=your-api-key-here
-AIEndpoint=https://openrouter.ai/api/v1/chat/completions
-AIModel=anthropic/claude-sonnet-4
+```python
+# In UE Output Log:
+exec <PluginPath>/Content/Python/setup_toolbar.py
 ```
 
-Or set environment variable: `TRACKING_AI_API_KEY`
+This creates a toolbar button with a custom SVG icon that opens the Editor Utility Widget.
 
-### Blueprint
+### Auto-Register on Startup
 
-```cpp
-// FreeD quick setup
-FTrackingSetupResult Result = UTrackingAutoSetupSubsystem::SetupFreeDCamera(
-    WorldContextObject,
-    "192.168.1.100",  // IP
-    40000,            // Port
-    "MainCamera"      // Name
-);
-
-// OpenTrack quick setup
-FTrackingSetupResult Result = UTrackingAutoSetupSubsystem::SetupOpenTrackCamera(
-    WorldContextObject,
-    1,               // Source number
-    "MainCamera"     // Name
-);
-
-// Use existing camera
-FCameraSetupConfig CamConfig;
-CamConfig.bCreateNewCamera = false;
-CamConfig.ExistingCamera = MyExistingCameraActor;
-```
+Copy `Content/Python/auto_register.py` to your project's `Content/Python/startup.py` to auto-register the button.
 
 ## Supported Protocols
 
@@ -95,21 +57,28 @@ CamConfig.ExistingCamera = MyExistingCameraActor;
 
 ## Camera Rig Presets
 
-- **Generic** — Default settings
-- **Panasonic** — Panasonic camera encoder defaults
-- **Sony** — Sony camera encoder defaults
-- **stYpe** — stYpe RedSpy/FreeD defaults
-- **Mosys** — Mosys camera tracking defaults
-- **Ncam** — Ncam AR tracking defaults
+Generic, Panasonic, Sony, stYpe, Mosys, Ncam
 
-## Lens Calibration
+## Lens Configuration
 
-The wizard guides you through encoder range calibration:
+The plugin creates proper `ULensFile` assets with:
+- **Encoder tables** — Maps raw encoder values (0-16777215 for 24-bit) to physical values
+- **Focal length table** — Normalized FxFy values at calibration points
+- **Image center table** — Default center point
+- **CineCameraComponent** — Filmback, lens ranges, focus settings
+- **LensComponent** — FIZ evaluation mode (UseLiveLink), distortion source, filmback override
 
-1. **Focus Distance** — Rotate focus ring to MIN, capture. Rotate to MAX, capture.
-2. **Focal Length** — Rotate zoom ring to MIN, capture. Rotate to MAX, capture.
+### Sensor Presets
 
-This maps raw encoder values (0-16777215 for 24-bit) to physical lens values.
+| Preset | Dimensions (mm) |
+|--------|----------------|
+| Super 35mm | 23.76 x 13.365 |
+| ARRI Alexa 35 | 24.576 x 13.824 |
+| RED V-Raptor | 27.03 x 14.26 |
+| Full Frame 35mm | 36.0 x 24.0 |
+| ARRI Alexa 65 | 54.12 x 25.59 |
+| Super 16mm | 21.0 x 11.8 |
+| MFT | 17.8 x 10.0 |
 
 ## Requirements
 
@@ -117,12 +86,61 @@ This maps raw encoder values (0-16777215 for 24-bit) to physical lens values.
 - Live Link plugin enabled
 - LiveLinkCamera plugin enabled
 - CameraCalibrationCore plugin enabled
+- LensComponent plugin enabled
 
 ## Installation
 
 1. Clone or download into your project's `Plugins/` folder
 2. Enable "Tracking Auto Setup" in Edit > Plugins
-3. Use toolbar buttons or Blueprint functions
+3. Use toolbar buttons or Python scripts
+
+## Project Structure
+
+```
+TrackingAutoSetup/
+├── Content/
+│   └── Python/
+│       ├── setup_toolbar.py      # Manual toolbar setup
+│       ├── auto_register.py      # Auto-register on startup
+│       └── README.md             # Python setup guide
+├── Resources/
+│   └── Icons/
+│       └── TrackingAutoSetup.svg # Custom SVG icon
+├── Source/
+│   ├── TrackingAutoSetup/        # Runtime module
+│   │   ├── Public/
+│   │   │   ├── TrackingAutoSetupModule.h
+│   │   │   ├── TrackingAutoSetupSubsystem.h
+│   │   │   ├── TrackingSetupTypes.h
+│   │   │   └── LensSetupTypes.h
+│   │   └── Private/
+│   │       ├── TrackingAutoSetupModule.cpp
+│   │       ├── TrackingAutoSetupSubsystem.cpp
+│   │       └── LensSetupTypes.cpp
+│   └── TrackingAutoSetupEditor/  # Editor module
+│       ├── Public/
+│       │   ├── TrackingAutoSetupEditorModule.h
+│       │   ├── TrackingAutoSetupStyle.h
+│       │   ├── Widgets/
+│       │   │   ├── STrackingAutoSetupPanel.h
+│       │   │   ├── STrackingSetupWizard.h
+│       │   │   └── STrackingAIChatPanel.h
+│       │   └── EditorUtility/
+│       │       ├── TrackingAutoSetupEditorUtilityWidget.h
+│       │       └── TrackingAutoSetupEditorUtilityWidgetFactory.h
+│       └── Private/
+│           ├── TrackingAutoSetupEditorModule.cpp
+│           ├── TrackingAutoSetupStyle.cpp
+│           ├── Widgets/
+│           │   ├── STrackingAutoSetupPanel.cpp
+│           │   ├── STrackingSetupWizard.cpp
+│           │   └── STrackingAIChatPanel.cpp
+│           └── EditorUtility/
+│               ├── TrackingAutoSetupEditorUtilityWidget.cpp
+│               └── TrackingAutoSetupEditorUtilityWidgetFactory.cpp
+├── TrackingAutoSetup.uplugin
+└── README.md
+```
 
 ## License
 
