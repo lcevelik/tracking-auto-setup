@@ -653,32 +653,8 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 		AddLog(TEXT("  WARNING: LiveLink client not available"));
 	}
 
-	// ── Step 4: Create lens file ─────────────────────────────────────
-	AddLog(TEXT("Step 4: Creating lens file..."));
-	FLensConfiguration LensConfig;
-	LensConfig.bCreateNewLensFile = true;
-	LensConfig.LensFileName = TEXT("TrackedLens");
-	LensConfig.FocusEncoderRange.RawMin = 0;
-	LensConfig.FocusEncoderRange.RawMax = 0x00FFFFFF;
-	LensConfig.ZoomEncoderRange.RawMin = 0;
-	LensConfig.ZoomEncoderRange.RawMax = 0x00FFFFFF;
-	LensConfig.FocusDistanceMinCM = FocusDistanceMinCM;
-	LensConfig.FocusDistanceMaxCM = FocusDistanceMaxCM;
-	LensConfig.FocalLengthMinMM = FocalLengthMinMM;
-	LensConfig.FocalLengthMaxMM = FocalLengthMaxMM;
-
-	ULensFile* LensFile = ULensSetupUtility::ApplyLensConfiguration(CineCamera, LensConfig);
-	if (LensFile)
-	{
-		AddLog(FString::Printf(TEXT("  Lens file created: %s"), *LensFile->GetName()));
-	}
-	else
-	{
-		AddLog(TEXT("  WARNING: Lens file creation failed"));
-	}
-
-	// ── Step 5: Configure CineCamera ─────────────────────────────────
-	AddLog(TEXT("Step 5: Configuring CineCamera lens settings..."));
+	// ── Step 4: Configure CineCamera ─────────────────────────────────
+	AddLog(TEXT("Step 4: Configuring CineCamera lens settings..."));
 	UCineCameraComponent* CineComp = CineCamera->GetCineCameraComponent();
 	if (CineComp)
 	{
@@ -695,9 +671,12 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 		CineCamera->FindComponentByClass<ULiveLinkComponentController>() ? TEXT("OK") : TEXT("FAILED")));
 	AddLog(FString::Printf(TEXT("Source: %s"),
 		SourceGuid.IsValid() ? *SourceGuid.ToString() : TEXT("Check Live Link panel")));
-	AddLog(FString::Printf(TEXT("Lens File: %s"), LensFile ? *LensFile->GetName() : TEXT("FAILED")));
+	AddLog(FString::Printf(TEXT("Lens File: will be created after calibration")));
 	AddLog(TEXT(""));
-	AddLog(TEXT("Check Window > Live Link to verify source is active"));
+	AddLog(TEXT("Next steps:"));
+	AddLog(TEXT("  1. Check Window > Live Link for green checkmark"));
+	AddLog(TEXT("  2. Rotate lens to min/max positions"));
+	AddLog(TEXT("  3. Capture Min/Max below, then APPLY CALIBRATION"));
 
 	bSetupRunning = false;
 	bSetupComplete = true;
@@ -773,7 +752,20 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 	ULensFile* LensFile = ULensSetupUtility::ApplyLensConfiguration(CineCamera, LensConfig);
 	if (LensFile)
 	{
-		AddLog(FString::Printf(TEXT("Calibrated lens file: %s"), *LensFile->GetName()));
+		AddLog(FString::Printf(TEXT("Lens file created: %s"), *LensFile->GetName()));
+		AddLog(FString::Printf(TEXT("Saved at: /Game/FonixFlowTrackerSetup/%s"), *LensConfig.LensFileName));
+
+		// Apply lens file to LiveLink component
+		ULiveLinkComponentController* LLController = CineCamera->FindComponentByClass<ULiveLinkComponentController>();
+		if (LLController)
+		{
+			LLController->SubjectRepresentation.Role = ULiveLinkCameraRole::StaticClass();
+			AddLog(TEXT("Lens file applied to LiveLink controller"));
+		}
+		else
+		{
+			AddLog(TEXT("WARNING: No LiveLink controller found — run Setup Now first"));
+		}
 	}
 	else
 	{
