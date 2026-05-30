@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
+#include "Widgets/Views/SListView.h"
 #include "FonixFlowTrackerSetupTypes.h"
 #include "LensSetupTypes.h"
 
@@ -12,7 +13,7 @@ class ULensFile;
 
 /**
  * Unified setup panel for FonixFlow Tracker Setup.
- * Single "Setup Now" button automates the entire 3D tracking pipeline.
+ * User selects a camera, then clicks "Setup Now" to configure everything.
  */
 class FONIXFLOWTRACKERSETUPEDITOR_API SFonixFlowTrackerSetupPanel : public SCompoundWidget
 {
@@ -29,6 +30,13 @@ private:
 	int32 ListeningPort = 40000;
 	FString SubjectName = TEXT("Camera");
 
+	// Camera selection
+	TArray<ACineCameraActor*> AvailableCameras;
+	TArray<TWeakObjectPtr<ACineCameraActor>> CameraWeakPtrs;
+	TSharedPtr<SListView<TWeakObjectPtr<ACineCameraActor>>> CameraListView;
+	ACineCameraActor* SelectedCamera = nullptr;
+
+	// Calibration
 	int32 FocusEncoderMin = 0;
 	int32 FocusEncoderMax = 0x00FFFFFF;
 	int32 ZoomEncoderMin = 0;
@@ -52,12 +60,14 @@ private:
 	TSharedRef<SWidget> BuildHeader();
 	TSharedRef<SWidget> BuildProtocolSection();
 	TSharedRef<SWidget> BuildNetworkSection();
+	TSharedRef<SWidget> BuildCameraSection();
 	TSharedRef<SWidget> BuildSetupButton();
 	TSharedRef<SWidget> BuildCalibrationSection();
 	TSharedRef<SWidget> BuildStatusSection();
 	TSharedRef<SWidget> BuildLogSection();
 
 	// Actions
+	void RefreshCameraList();
 	void RunOneClickSetup();
 	void CaptureFocusMin();
 	void CaptureFocusMax();
@@ -67,14 +77,18 @@ private:
 	void DetectLocalIP();
 	void AddLog(const FString& Message);
 
+	// Camera list
+	TSharedRef<ITableRow> OnGenerateCameraRow(TWeakObjectPtr<ACineCameraActor> InItem, const TSharedRef<STableViewBase>& OwnerTable);
+	void OnCameraSelected(TWeakObjectPtr<ACineCameraActor> InItem, ESelectInfo::Type SelectInfo);
+
 	// Queries
 	FText GetIPAddressText() const;
-	FText GetPortText() const;
 	FText GetFocusMinText() const;
 	FText GetFocusMaxText() const;
 	FText GetZoomMinText() const;
 	FText GetZoomMaxText() const;
 	FText GetSetupStatusText() const;
+	FText GetSelectedCameraText() const;
 	EVisibility GetCalibrationVisibility() const;
 	bool IsCalibrationReady() const;
 	bool IsSetupButtonEnabled() const;
