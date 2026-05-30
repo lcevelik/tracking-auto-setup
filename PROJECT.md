@@ -9,9 +9,9 @@
 - Distribution: Unreal Marketplace first, GitHub later
 
 ## In Progress
-- [ ] Test compilation on WinPC with UE 5.6
 - [ ] Lens encoder range capture from Live Link data stream
 - [ ] Camera rig preset defaults (encoder ranges per manufacturer)
+- [ ] Runtime testing in UE Editor (plugin loads, wizard works, creates tracking)
 
 ## To Do
 - [ ] Multi-camera setup support (multiple cameras in one scene)
@@ -27,6 +27,8 @@
 - [ ] AI Chat: context-aware setup suggestions (read current scene state)
 
 ## Done
+- [x] UE 5.6 compilation — all 18 compile units pass, both DLLs link clean
+- [x] UE 5.6 API compatibility fixes (FEditorStyle, CineCamera includes, VCamCore, etc.)
 - [x] Plugin scaffold created (Runtime + Editor modules)
 - [x] Core types defined (FTrackingConnectionSettings, FCameraSetupConfig, FFonixFlowTrackerResult)
 - [x] Subsystem architecture (UFonixFlowTrackerSetupSubsystem)
@@ -56,7 +58,8 @@
 - (none)
 
 ## Releases
-- v0.2.0 — AI Chat, Setup Wizard, Camera Picker (current)
+- v0.3.0 — UE 5.6 compatibility, all API fixes (current)
+- v0.2.0 — AI Chat, Setup Wizard, Camera Picker
 - v0.1.0 — Initial scaffold
 
 ## Notes
@@ -71,3 +74,6 @@
 - OpenTrack connection settings: Source number (1-200) for multicast 235.135.1.[N]
 - FreeD encoder data: Focus (24-bit), Zoom (24-bit), UserDefined (16-bit)
 - Camera rig presets: Generic, Panasonic, Sony, stYpe, Mosys, Ncam
+- UE 5.6 breaking changes: see skill unreal-engine-plugin-development/references/ue56-api-changes.md
+- Key: VCamCore module (not VirtualCameraCore), FAppStyle (not FEditorStyle), CinematicCamera dep needed
+- Lens table AddPoint: 5 args (focus, zoom, info, tolerance, bIsCalibrationPoint)
