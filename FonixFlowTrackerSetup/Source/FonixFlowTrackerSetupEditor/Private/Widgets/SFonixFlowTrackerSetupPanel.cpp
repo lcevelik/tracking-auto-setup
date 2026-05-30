@@ -708,7 +708,7 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 	{
 		// Find the FreeD connection settings struct via reflection
 		UScriptStruct* FreeDSettingsStruct = nullptr;
-		for (TObjectIterator<UStruct> It; It; ++It)
+		for (TObjectIterator<UScriptStruct> It; It; ++It)
 		{
 			if (It->GetName() == TEXT("LiveLinkFreeDConnectionSettings"))
 			{
