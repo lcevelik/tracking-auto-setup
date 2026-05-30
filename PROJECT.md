@@ -1,4 +1,4 @@
-# Tracking Auto Setup
+# FonixFlow Tracker Setup
 
 ## Goals
 - One-click Live Link camera tracking setup for Unreal Engine
@@ -28,15 +28,15 @@
 
 ## Done
 - [x] Plugin scaffold created (Runtime + Editor modules)
-- [x] Core types defined (FTrackingConnectionSettings, FCameraSetupConfig, FTrackingSetupResult)
-- [x] Subsystem architecture (UTrackingAutoSetupSubsystem)
+- [x] Core types defined (FTrackingConnectionSettings, FCameraSetupConfig, FFonixFlowTrackerResult)
+- [x] Subsystem architecture (UFonixFlowTrackerSetupSubsystem)
 - [x] GitHub repo created
 - [x] AI Chat Panel (STrackingAIChatPanel)
   - [x] OpenRouter/OpenAI-compatible API integration
   - [x] VP-focused system prompt
   - [x] Chat history, error handling
   - [x] Configurable API key/endpoint/model
-- [x] Setup Wizard (STrackingSetupWizard)
+- [x] Setup Wizard (SFonixFlowTrackerWizard)
   - [x] 7-step guided flow: Protocol → Network → Camera → Lens → Anchor → Review → Done
   - [x] Protocol selection (FreeD/OpenTrack IO)
   - [x] Camera rig presets (Generic, Panasonic, Sony, stYpe, Mosys, Ncam)

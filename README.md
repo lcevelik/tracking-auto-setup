@@ -1,10 +1,10 @@
-# Tracking Auto Setup
+# FonixFlow Tracker Setup
 
 **Unreal Engine plugin for one-click Live Link camera tracking setup.**
 
 ## Quick Start
 
-1. **Enable plugin** — Edit > Plugins > "Tracking Auto Setup" > Enable
+1. **Enable plugin** — Edit > Plugins > "FonixFlow Tracker Setup" > Enable
 2. **Click the camera icon** in the Level Editor toolbar
 3. **Follow the wizard** — done
 
@@ -47,7 +47,7 @@ Automates the entire Live Link camera tracking setup:
 
 ## Installation
 
-1. Clone into `Plugins/TrackingAutoSetup/`
+1. Clone into `Plugins/FonixFlowTrackerSetup/`
 2. Enable in Edit > Plugins
 3. Click toolbar icon
 
