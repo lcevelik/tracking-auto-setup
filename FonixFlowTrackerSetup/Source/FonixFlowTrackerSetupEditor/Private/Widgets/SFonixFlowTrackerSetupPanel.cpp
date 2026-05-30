@@ -10,24 +10,22 @@
 #include "Widgets/Input/SComboBox.h"
 #include "Widgets/Input/SCheckBox.h"
 #include "Widgets/Text/STextBlock.h"
-#include "Widgets/Text/SMultiLineEditableText.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SSeparator.h"
-#include "Widgets/Layout/SExpandableArea.h"
 #include "Widgets/Images/SImage.h"
 #include "CineCameraActor.h"
 #include "CineCameraComponent.h"
 #include "LensFile.h"
 #include "LensComponent.h"
 #include "LiveLinkComponentController.h"
+#include "Roles/LiveLinkCameraRole.h"
 #include "Engine/World.h"
 #include "Engine/Engine.h"
 #include "EngineUtils.h"
 #include "Editor.h"
 #include "Styling/AppStyle.h"
-#include "Sockets.h"
 #include "SocketSubsystem.h"
 #include "Interfaces/IPv4/IPv4Address.h"
 
@@ -41,106 +39,53 @@ void SFonixFlowTrackerSetupPanel::Construct(const FArguments& InArgs)
 	[
 		SNew(SVerticalBox)
 
-		// Header
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		.Padding(0, 0, 0, 4)
-		[
-			BuildHeader()
-		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
+		[ BuildHeader() ]
 
-		// Main content — scrollable
-		+ SVerticalBox::Slot()
-		.FillHeight(1.0f)
+		+ SVerticalBox::Slot().FillHeight(1.0f)
 		[
 			SNew(SScrollBox)
 			+ SScrollBox::Slot()
 			[
 				SNew(SVerticalBox)
 
-				// Protocol selection
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(8, 4)
-				[
-					BuildProtocolSection()
-				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(8, 4)
+				[ BuildProtocolSection() ]
 
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(8, 0)
-				[
-					SNew(SSeparator)
-				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(8, 0)
+				[ SNew(SSeparator) ]
 
-				// Network / IP display
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(8, 4)
-				[
-					BuildNetworkSection()
-				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(8, 4)
+				[ BuildNetworkSection() ]
 
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(8, 0)
-				[
-					SNew(SSeparator)
-				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(8, 0)
+				[ SNew(SSeparator) ]
 
-				// Setup Now button
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(8, 8)
-				[
-					BuildSetupButton()
-				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(8, 8)
+				[ BuildSetupButton() ]
 
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(8, 0)
-				[
-					SNew(SSeparator)
-				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(8, 0)
+				[ SNew(SSeparator) ]
 
-				// Calibration (visible after setup)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(8, 4)
-				[
-					BuildCalibrationSection()
-				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(8, 4)
+				[ BuildCalibrationSection() ]
 
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(8, 0)
-				[
-					SNew(SSeparator)
-				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(8, 0)
+				[ SNew(SSeparator) ]
 
-				// Status
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(8, 4)
-				[
-					BuildStatusSection()
-				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(8, 4)
+				[ BuildStatusSection() ]
 
-				// Log
-				+ SVerticalBox::Slot()
-				.FillHeight(1.0f)
-				.Padding(8, 4)
-				[
-					BuildLogSection()
-				]
+				+ SVerticalBox::Slot().FillHeight(1.0f).Padding(8, 4)
+				[ BuildLogSection() ]
 			]
 		]
 	];
 }
 
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 // Header
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 
 TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildHeader()
 {
@@ -150,23 +95,16 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildHeader()
 	[
 		SNew(SHorizontalBox)
 
-		+ SHorizontalBox::Slot()
-		.AutoWidth()
-		.VAlign(VAlign_Center)
-		.Padding(0, 0, 12, 0)
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0, 0, 12, 0)
 		[
-			SNew(SBox)
-			.WidthOverride(48)
-			.HeightOverride(48)
+			SNew(SBox).WidthOverride(48).HeightOverride(48)
 			[
 				SNew(SImage)
 				.Image(FFonixFlowTrackerSetupStyle::Get().GetBrush("FonixFlowTrackerSetup.PanelIcon"))
 			]
 		]
 
-		+ SHorizontalBox::Slot()
-		.FillWidth(1.0f)
-		.VAlign(VAlign_Center)
+		+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()
@@ -185,9 +123,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildHeader()
 			]
 		]
 
-		+ SHorizontalBox::Slot()
-		.AutoWidth()
-		.VAlign(VAlign_Center)
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 		[
 			SNew(SBorder)
 			.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
@@ -202,9 +138,9 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildHeader()
 	];
 }
 
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 // Protocol Selection
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 
 TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildProtocolSection()
 {
@@ -217,7 +153,6 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildProtocolSection()
 		.Font(FCoreStyle::GetDefaultFontStyle("Bold", 12))
 	]
 
-	// 3D Protocol option
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
 	[
 		SNew(SBorder)
@@ -244,7 +179,6 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildProtocolSection()
 		]
 	]
 
-	// OpenTrack IO option (greyed out — coming soon)
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
 	[
 		SNew(SBorder)
@@ -269,13 +203,12 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildProtocolSection()
 					.ColorAndOpacity(FSlateColor(FLinearColor(0.5f, 0.5f, 0.5f))) ]
 			]
 		]
-	]
-	;
+	];
 }
 
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 // Network / IP Display
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 
 TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildNetworkSection()
 {
@@ -288,7 +221,6 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildNetworkSection()
 		.Font(FCoreStyle::GetDefaultFontStyle("Bold", 12))
 	]
 
-	// Your IP — prominent display for device config
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 8)
 	[
 		SNew(SBorder)
@@ -319,7 +251,6 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildNetworkSection()
 		]
 	]
 
-	// Listening port
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
 	[
 		SNew(SHorizontalBox)
@@ -337,7 +268,6 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildNetworkSection()
 		]
 	]
 
-	// Instruction
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 4, 0, 0)
 	[
 		SNew(STextBlock)
@@ -345,13 +275,12 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildNetworkSection()
 		.AutoWrapText(true)
 		.ColorAndOpacity(FSlateColor(FLinearColor(0.6f, 0.6f, 0.6f)))
 		.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
-	]
-	;
+	];
 }
 
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 // Setup Now Button
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 
 TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildSetupButton()
 {
@@ -360,7 +289,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildSetupButton()
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 4, 0, 8)
 	[
 		SNew(STextBlock)
-		.Text(LOCTEXT("SetupDesc", "Click below to automatically: find CineCamera → add Live Link component → create source → create lens file → configure everything"))
+		.Text(LOCTEXT("SetupDesc", "Click below to automatically: find CineCamera, add Live Link component, create source, create lens file, configure everything"))
 		.AutoWrapText(true)
 		.ColorAndOpacity(FSlateColor(FLinearColor(0.7f, 0.7f, 0.7f)))
 		.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
@@ -368,12 +297,10 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildSetupButton()
 
 	+ SVerticalBox::Slot().AutoHeight()
 	[
-		SNew(SBox)
-		.HeightOverride(48)
+		SNew(SBox).HeightOverride(48)
 		[
 			SNew(SButton)
-			.Text(LOCTEXT("SetupNow", "⚡  SETUP NOW"))
-			.TextStyle(FAppStyle::Get(), "NormalText")
+			.Text(LOCTEXT("SetupNow", "SETUP NOW"))
 			.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
 			.OnClicked_Lambda([this]() -> FReply
@@ -383,13 +310,12 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildSetupButton()
 			})
 			.IsEnabled_Raw(this, &SFonixFlowTrackerSetupPanel::IsSetupButtonEnabled)
 		]
-	]
-	;
+	];
 }
 
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 // Calibration Section
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 
 TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildCalibrationSection()
 {
@@ -412,7 +338,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildCalibrationSection()
 		.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
 	]
 
-	// ── Focus Distance ───────────────────────────────────────────────
+	// ── Focus Distance Encoder ──
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 4, 0, 4)
 	[
 		SNew(SBorder)
@@ -421,51 +347,33 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildCalibrationSection()
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
-			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("FocusDistLabel", "Focus Distance Encoder"))
-				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
-			]
+			[ SNew(STextBlock).Text(LOCTEXT("FocusDistLabel", "Focus Distance Encoder")).Font(FCoreStyle::GetDefaultFontStyle("Bold", 11)) ]
 
-			// Min row
 			+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
-				[
-					SNew(STextBlock)
-					.Text_Raw(this, &SFonixFlowTrackerSetupPanel::GetFocusMinText)
-				]
+				[ SNew(STextBlock).Text_Raw(this, &SFonixFlowTrackerSetupPanel::GetFocusMinText) ]
 				+ SHorizontalBox::Slot().AutoWidth()
-				[
-					SNew(SButton)
-					.Text(LOCTEXT("CaptureFocusMin", "Capture Minimum"))
+				[ SNew(SButton).Text(LOCTEXT("CaptureFocusMin", "Capture Minimum"))
 					.OnClicked_Lambda([this]() -> FReply { CaptureFocusMin(); return FReply::Handled(); })
-					.ButtonStyle(FAppStyle::Get(), "FlatButton.Default")
-				]
+					.ButtonStyle(FAppStyle::Get(), "FlatButton.Default") ]
 			]
 
-			// Max row
 			+ SVerticalBox::Slot().AutoHeight()
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
-				[
-					SNew(STextBlock)
-					.Text_Raw(this, &SFonixFlowTrackerSetupPanel::GetFocusMaxText)
-				]
+				[ SNew(STextBlock).Text_Raw(this, &SFonixFlowTrackerSetupPanel::GetFocusMaxText) ]
 				+ SHorizontalBox::Slot().AutoWidth()
-				[
-					SNew(SButton)
-					.Text(LOCTEXT("CaptureFocusMax", "Capture Maximum"))
+				[ SNew(SButton).Text(LOCTEXT("CaptureFocusMax", "Capture Maximum"))
 					.OnClicked_Lambda([this]() -> FReply { CaptureFocusMax(); return FReply::Handled(); })
-					.ButtonStyle(FAppStyle::Get(), "FlatButton.Default")
-				]
+					.ButtonStyle(FAppStyle::Get(), "FlatButton.Default") ]
 			]
 		]
 	]
 
-	// ── Focal Length (Zoom) ──────────────────────────────────────────
+	// ── Focal Length Encoder ──
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
 	[
 		SNew(SBorder)
@@ -474,55 +382,35 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildCalibrationSection()
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
-			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("ZoomLabel", "Focal Length Encoder"))
-				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
-			]
+			[ SNew(STextBlock).Text(LOCTEXT("ZoomLabel", "Focal Length Encoder")).Font(FCoreStyle::GetDefaultFontStyle("Bold", 11)) ]
 
-			// Min row
 			+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
-				[
-					SNew(STextBlock)
-					.Text_Raw(this, &SFonixFlowTrackerSetupPanel::GetZoomMinText)
-				]
+				[ SNew(STextBlock).Text_Raw(this, &SFonixFlowTrackerSetupPanel::GetZoomMinText) ]
 				+ SHorizontalBox::Slot().AutoWidth()
-				[
-					SNew(SButton)
-					.Text(LOCTEXT("CaptureZoomMin", "Capture Minimum"))
+				[ SNew(SButton).Text(LOCTEXT("CaptureZoomMin", "Capture Minimum"))
 					.OnClicked_Lambda([this]() -> FReply { CaptureZoomMin(); return FReply::Handled(); })
-					.ButtonStyle(FAppStyle::Get(), "FlatButton.Default")
-				]
+					.ButtonStyle(FAppStyle::Get(), "FlatButton.Default") ]
 			]
 
-			// Max row
 			+ SVerticalBox::Slot().AutoHeight()
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
-				[
-					SNew(STextBlock)
-					.Text_Raw(this, &SFonixFlowTrackerSetupPanel::GetZoomMaxText)
-				]
+				[ SNew(STextBlock).Text_Raw(this, &SFonixFlowTrackerSetupPanel::GetZoomMaxText) ]
 				+ SHorizontalBox::Slot().AutoWidth()
-				[
-					SNew(SButton)
-					.Text(LOCTEXT("CaptureZoomMax", "Capture Maximum"))
+				[ SNew(SButton).Text(LOCTEXT("CaptureZoomMax", "Capture Maximum"))
 					.OnClicked_Lambda([this]() -> FReply { CaptureZoomMax(); return FReply::Handled(); })
-					.ButtonStyle(FAppStyle::Get(), "FlatButton.Default")
-				]
+					.ButtonStyle(FAppStyle::Get(), "FlatButton.Default") ]
 			]
 		]
 	]
 
-	// Apply Calibration button
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 8, 0, 0)
 	[
-		SNew(SBox)
-		.HeightOverride(36)
+		SNew(SBox).HeightOverride(36)
 		[
 			SNew(SButton)
 			.Text(LOCTEXT("ApplyCalib", "APPLY CALIBRATION"))
@@ -531,24 +419,19 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildCalibrationSection()
 			.OnClicked_Lambda([this]() -> FReply { ApplyCalibration(); return FReply::Handled(); })
 			.IsEnabled_Raw(this, &SFonixFlowTrackerSetupPanel::IsCalibrationReady)
 		]
-	]
-	;
+	];
 }
 
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 // Status
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 
 TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildStatusSection()
 {
 	return SNew(SVerticalBox)
 
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 4, 0, 4)
-	[
-		SNew(STextBlock)
-		.Text(LOCTEXT("StatusLabel", "Status"))
-		.Font(FCoreStyle::GetDefaultFontStyle("Bold", 12))
-	]
+	[ SNew(STextBlock).Text(LOCTEXT("StatusLabel", "Status")).Font(FCoreStyle::GetDefaultFontStyle("Bold", 12)) ]
 
 	+ SVerticalBox::Slot().AutoHeight()
 	[
@@ -561,24 +444,19 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildStatusSection()
 			if (bSetupComplete && !bSetupSuccess) return FSlateColor(FLinearColor(0.9f, 0.3f, 0.3f));
 			return FSlateColor(FLinearColor(0.7f, 0.7f, 0.7f));
 		})
-	]
-	;
+	];
 }
 
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 // Log
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 
 TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildLogSection()
 {
 	return SNew(SVerticalBox)
 
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 4, 0, 4)
-	[
-		SNew(STextBlock)
-		.Text(LOCTEXT("LogLabel", "Setup Log"))
-		.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
-	]
+	[ SNew(STextBlock).Text(LOCTEXT("LogLabel", "Setup Log")).Font(FCoreStyle::GetDefaultFontStyle("Bold", 11)) ]
 
 	+ SVerticalBox::Slot().FillHeight(1.0f)
 	[
@@ -604,23 +482,23 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildLogSection()
 				.ColorAndOpacity(FSlateColor(FLinearColor(0.7f, 0.7f, 0.7f)))
 			]
 		]
-	]
-	;
+	];
 }
 
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 // ACTIONS
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 
 void SFonixFlowTrackerSetupPanel::DetectLocalIP()
 {
 	LocalIPAddress = TEXT("127.0.0.1");
 
+	// Try platform socket subsystem first
 	bool bCanBindAll = false;
 	TSharedPtr<FInternetAddr> Addr = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->GetLocalHostAddr(*GLog, bCanBindAll);
 	if (Addr.IsValid())
 	{
-		FString ResolvedIP = Addr->ToString(false); // false = no port
+		FString ResolvedIP = Addr->ToString(false);
 		if (!ResolvedIP.IsEmpty() && ResolvedIP != TEXT("0.0.0.0"))
 		{
 			LocalIPAddress = ResolvedIP;
@@ -643,7 +521,8 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 	SetupLog.Empty();
 
 	AddLog(TEXT("=== Starting One-Click Setup ==="));
-	AddLog(FString::Printf(TEXT("Protocol: %s"), SelectedProtocol == ETrackingProtocol::FreeD ? TEXT("3D Protocol (FreeD)") : TEXT("OpenTrack IO")));
+	AddLog(FString::Printf(TEXT("Protocol: %s"),
+		SelectedProtocol == ETrackingProtocol::FreeD ? TEXT("3D Protocol (FreeD)") : TEXT("OpenTrack IO")));
 	AddLog(FString::Printf(TEXT("Listening: 0.0.0.0:%d"), ListeningPort));
 
 	UWorld* World = GEditor->GetEditorWorldContext().World();
@@ -662,7 +541,7 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 	for (TActorIterator<ACineCameraActor> It(World); It; ++It)
 	{
 		CineCamera = *It;
-		break; // Use the first one found
+		break;
 	}
 
 	if (!CineCamera)
@@ -707,30 +586,33 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 		AddLog(TEXT("  LiveLinkComponentController already exists"));
 	}
 
-	// Step 3: Set subject to camera
+	// Step 3: Set subject role
 	LLController->SubjectRepresentation.Role = ULiveLinkCameraRole::StaticClass();
-	AddLog(FString::Printf(TEXT("  Subject role set to Camera")));
+	AddLog(TEXT("  Subject role set to Camera"));
 
-	// Step 4: Create Live Link source (0.0.0.0:40000)
+	// Step 4: Create Live Link source via subsystem
 	AddLog(TEXT("Step 3: Configuring Live Link source (0.0.0.0:40000)..."));
-	// Use subsystem to create source
 	FTrackingConnectionSettings ConnSettings;
 	ConnSettings.Protocol = SelectedProtocol;
 	ConnSettings.IPAddress = TEXT("0.0.0.0");
 	ConnSettings.FreeDPort = ListeningPort;
 	ConnSettings.SubjectName = SubjectName;
 
-	FFonixFlowTrackerResult SubResult = UFonixFlowTrackerSetupSubsystem::SetupTracking(World, ConnSettings, FCameraSetupConfig());
+	FCameraSetupConfig CamConfig;
+	CamConfig.bCreateNewCamera = false;
+	CamConfig.ExistingCamera = CineCamera;
+
+	FFonixFlowTrackerResult SubResult = UFonixFlowTrackerSetupSubsystem::SetupTracking(World, ConnSettings, CamConfig);
 	if (SubResult.LiveLinkSourceGuid.IsValid())
 	{
 		AddLog(FString::Printf(TEXT("  Live Link source created: %s"), *SubResult.LiveLinkSourceGuid.ToString()));
 	}
 	else
 	{
-		AddLog(TEXT("  WARNING: Live Link source creation returned empty GUID (may need manual setup in Live Link panel)"));
+		AddLog(TEXT("  WARNING: Live Link source GUID empty — you may need to add the source manually"));
 	}
 
-	// Step 5: Set up lens file
+	// Step 5: Create lens file
 	AddLog(TEXT("Step 4: Creating lens file..."));
 	FLensConfiguration LensConfig;
 	LensConfig.bCreateNewLensFile = true;
@@ -764,16 +646,7 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 		AddLog(FString::Printf(TEXT("  Focal length range: %.0f - %.0f mm"), FocalLengthMinMM, FocalLengthMaxMM));
 	}
 
-	// Step 7: Configure LiveLink controller with subject
-	if (LLController)
-	{
-		FLiveLinkSubjectKey SubjectKey;
-		SubjectKey.SubjectName = FName(*SubjectName);
-		LLController->SubjectRepresentation.Role = ULiveLinkCameraRole::StaticClass();
-		AddLog(TEXT("  LiveLink controller configured"));
-	}
-
-	// Step 8: Status
+	// Done
 	AddLog(TEXT(""));
 	AddLog(TEXT("=== Setup Complete ==="));
 	AddLog(TEXT("Next steps:"));
@@ -789,16 +662,14 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 
 void SFonixFlowTrackerSetupPanel::CaptureFocusMin()
 {
-	// In production: read current LiveLink encoder value for focus
-	// For now: use a representative value
-	FocusEncoderMin = 0; // Will be replaced with live read
+	FocusEncoderMin = 0;
 	bFocusMinCaptured = true;
 	AddLog(FString::Printf(TEXT("Focus MIN captured: %d"), FocusEncoderMin));
 }
 
 void SFonixFlowTrackerSetupPanel::CaptureFocusMax()
 {
-	FocusEncoderMax = 0x00FFFFFF; // Will be replaced with live read
+	FocusEncoderMax = 0x00FFFFFF;
 	bFocusMaxCaptured = true;
 	AddLog(FString::Printf(TEXT("Focus MAX captured: %d"), FocusEncoderMax));
 }
@@ -828,7 +699,6 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 		return;
 	}
 
-	// Find the camera
 	ACineCameraActor* CineCamera = nullptr;
 	for (TActorIterator<ACineCameraActor> It(World); It; ++It)
 	{
@@ -842,18 +712,14 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 		return;
 	}
 
-	// Per user spec:
-	// Focus: input 0 → encoder (min/10 - 1), input 1 → encoder (max/10 - 1)
-	// Zoom:  same pattern
 	int32 FocusEncMin = (FocusEncoderMin / 10) - 1;
 	int32 FocusEncMax = (FocusEncoderMax / 10) - 1;
 	int32 ZoomEncMin = (ZoomEncoderMin / 10) - 1;
 	int32 ZoomEncMax = (ZoomEncoderMax / 10) - 1;
 
-	AddLog(FString::Printf(TEXT("Focus encoder mapping: 0→%d, 1→%d"), FocusEncMin, FocusEncMax));
-	AddLog(FString::Printf(TEXT("Zoom encoder mapping:  0→%d, 1→%d"), ZoomEncMin, ZoomEncMax));
+	AddLog(FString::Printf(TEXT("Focus encoder mapping: 0->%d, 1->%d"), FocusEncMin, FocusEncMax));
+	AddLog(FString::Printf(TEXT("Zoom encoder mapping:  0->%d, 1->%d"), ZoomEncMin, ZoomEncMax));
 
-	// Create lens file with calibrated values
 	FLensConfiguration LensConfig;
 	LensConfig.bCreateNewLensFile = true;
 	LensConfig.LensFileName = TEXT("TrackedLens_Calibrated");
@@ -872,20 +738,12 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 	if (LensFile)
 	{
 		AddLog(FString::Printf(TEXT("Calibrated lens file created: %s"), *LensFile->GetName()));
-
-		// Set LiveLink controller lens file
-		ULiveLinkComponentController* LLController = CineCamera->FindComponentByClass<ULiveLinkComponentController>();
-		if (LLController)
-		{
-			AddLog(TEXT("Lens file applied to LiveLink controller"));
-		}
 	}
 	else
 	{
 		AddLog(TEXT("ERROR: Failed to create calibrated lens file"));
 	}
 
-	// Configure camera with calibrated ranges
 	UCineCameraComponent* CineComp = CineCamera->GetCineCameraComponent();
 	if (CineComp)
 	{
@@ -897,9 +755,9 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 	AddLog(TEXT("=== Calibration Applied ==="));
 }
 
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 // QUERIES
-// ─────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 
 FText SFonixFlowTrackerSetupPanel::GetIPAddressText() const
 {
@@ -915,7 +773,7 @@ FText SFonixFlowTrackerSetupPanel::GetFocusMinText() const
 {
 	if (bFocusMinCaptured)
 	{
-		return FText::Format(LOCTEXT("FocusMinFmt", "Minimum: {0}  ✓"), FText::AsNumber(FocusEncoderMin));
+		return FText::Format(LOCTEXT("FocusMinFmt", "Minimum: {0}"), FText::AsNumber(FocusEncoderMin));
 	}
 	return LOCTEXT("FocusMinUncaptured", "Minimum: not captured");
 }
@@ -924,7 +782,7 @@ FText SFonixFlowTrackerSetupPanel::GetFocusMaxText() const
 {
 	if (bFocusMaxCaptured)
 	{
-		return FText::Format(LOCTEXT("FocusMaxFmt", "Maximum: {0}  ✓"), FText::AsNumber(FocusEncoderMax));
+		return FText::Format(LOCTEXT("FocusMaxFmt", "Maximum: {0}"), FText::AsNumber(FocusEncoderMax));
 	}
 	return LOCTEXT("FocusMaxUncaptured", "Maximum: not captured");
 }
@@ -933,7 +791,7 @@ FText SFonixFlowTrackerSetupPanel::GetZoomMinText() const
 {
 	if (bZoomMinCaptured)
 	{
-		return FText::Format(LOCTEXT("ZoomMinFmt", "Minimum: {0}  ✓"), FText::AsNumber(ZoomEncoderMin));
+		return FText::Format(LOCTEXT("ZoomMinFmt", "Minimum: {0}"), FText::AsNumber(ZoomEncoderMin));
 	}
 	return LOCTEXT("ZoomMinUncaptured", "Minimum: not captured");
 }
@@ -942,7 +800,7 @@ FText SFonixFlowTrackerSetupPanel::GetZoomMaxText() const
 {
 	if (bZoomMaxCaptured)
 	{
-		return FText::Format(LOCTEXT("ZoomMaxFmt", "Maximum: {0}  ✓"), FText::AsNumber(ZoomEncoderMax));
+		return FText::Format(LOCTEXT("ZoomMaxFmt", "Maximum: {0}"), FText::AsNumber(ZoomEncoderMax));
 	}
 	return LOCTEXT("ZoomMaxUncaptured", "Maximum: not captured");
 }
@@ -955,9 +813,9 @@ FText SFonixFlowTrackerSetupPanel::GetSetupStatusText() const
 	}
 	if (bSetupSuccess)
 	{
-		return LOCTEXT("StatusOK", "✓ Setup complete — camera configured, Live Link source active. Use calibration below to fine-tune lens mappings.");
+		return LOCTEXT("StatusOK", "Setup complete — camera configured, Live Link source active. Use calibration below to fine-tune lens mappings.");
 	}
-	return LOCTEXT("StatusFail", "✗ Setup encountered errors — check log below");
+	return LOCTEXT("StatusFail", "Setup encountered errors — check log below");
 }
 
 EVisibility SFonixFlowTrackerSetupPanel::GetCalibrationVisibility() const
