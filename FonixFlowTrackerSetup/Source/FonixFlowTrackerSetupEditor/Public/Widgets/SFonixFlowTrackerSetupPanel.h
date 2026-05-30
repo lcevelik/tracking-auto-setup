@@ -4,15 +4,15 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
-#include "Widgets/Docking/SDockTab.h"
+#include "FonixFlowTrackerSetupTypes.h"
+#include "LensSetupTypes.h"
 
-class SFonixFlowTrackerSetupWizard;
-class SFonixFlowTrackerAIChatPanel;
+class ACineCameraActor;
+class ULensFile;
 
 /**
- * Main panel widget for FonixFlow Tracker Setup plugin.
- * Contains tabs for Wizard, AI Chat, and Settings.
- * Opened from the toolbar button.
+ * Unified setup panel for FonixFlow Tracker Setup.
+ * Single "Setup Now" button automates the entire 3D tracking pipeline.
  */
 class FONIXFLOWTRACKERSETUPEDITOR_API SFonixFlowTrackerSetupPanel : public SCompoundWidget
 {
@@ -23,24 +23,65 @@ public:
 	void Construct(const FArguments& InArgs);
 
 private:
-	/** Tab identifiers */
-	static const FName WizardTabId;
-	static const FName AIChatTabId;
-	static const FName SettingsTabId;
+	// ── State ────────────────────────────────────────────────────────
+	ETrackingProtocol SelectedProtocol = ETrackingProtocol::FreeD;
+	FString LocalIPAddress;
+	int32 ListeningPort = 40000;
+	FString SubjectName = TEXT("Camera");
 
-	/** Tab widget */
-	TSharedPtr<SDockTab> MainTab;
-	TSharedPtr<SWidget> TabManager;
+	// Calibration state
+	int32 FocusEncoderMin = 0;
+	int32 FocusEncoderMax = 0x00FFFFFF;
+	int32 ZoomEncoderMin = 0;
+	int32 ZoomEncoderMax = 0x00FFFFFF;
+	bool bFocusMinCaptured = false;
+	bool bFocusMaxCaptured = false;
+	bool bZoomMinCaptured = false;
+	bool bZoomMaxCaptured = false;
 
-	/** Child widgets */
-	TSharedPtr<SFonixFlowTrackerSetupWizard> WizardWidget;
-	TSharedPtr<SFonixFlowTrackerAIChatPanel> AIChatWidget;
+	// Physical lens ranges (read from LiveLink once data flows)
+	float FocusDistanceMinCM = 60.0f;
+	float FocusDistanceMaxCM = 4095.0f;
+	float FocalLengthMinMM = 28.0f;
+	float FocalLengthMaxMM = 100.0f;
 
-	/** Build tab content */
-	TSharedRef<SDockTab> OnSpawnWizardTab(const FSpawnTabArgs& Args);
-	TSharedRef<SDockTab> OnSpawnAIChatTab(const FSpawnTabArgs& Args);
-	TSharedRef<SDockTab> OnSpawnSettingsTab(const FSpawnTabArgs& Args);
+	// Setup result
+	bool bSetupRunning = false;
+	bool bSetupComplete = false;
+	bool bSetupSuccess = false;
+	TArray<FString> SetupLog;
 
-	/** Build the panel header with icon */
+	// Result from subsystem
+	FFonixFlowTrackerResult LastResult;
+
+	// ── UI Build ─────────────────────────────────────────────────────
 	TSharedRef<SWidget> BuildHeader();
+	TSharedRef<SWidget> BuildProtocolSection();
+	TSharedRef<SWidget> BuildNetworkSection();
+	TSharedRef<SWidget> BuildSetupButton();
+	TSharedRef<SWidget> BuildCalibrationSection();
+	TSharedRef<SWidget> BuildStatusSection();
+	TSharedRef<SWidget> BuildLogSection();
+
+	// ── Actions ──────────────────────────────────────────────────────
+	void RunOneClickSetup();
+	void CaptureFocusMin();
+	void CaptureFocusMax();
+	void CaptureZoomMin();
+	void CaptureZoomMax();
+	void ApplyCalibration();
+	void DetectLocalIP();
+	void AddLog(const FString& Message);
+
+	// ── Queries ──────────────────────────────────────────────────────
+	FText GetIPAddressText() const;
+	FText GetPortText() const;
+	FText GetFocusMinText() const;
+	FText GetFocusMaxText() const;
+	FText GetZoomMinText() const;
+	FText GetZoomMaxText() const;
+	FText GetSetupStatusText() const;
+	EVisibility GetCalibrationVisibility() const;
+	bool IsCalibrationReady() const;
+	bool IsSetupButtonEnabled() const;
 };

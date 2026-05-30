@@ -33,7 +33,9 @@ public class FonixFlowTrackerSetupEditor : ModuleRules
 			"Json",
 			"JsonUtilities",
 			"CinematicCamera",
-			"Projects"
+			"Projects",
+			"Sockets",
+			"Networking"
 		});
 	}
 }

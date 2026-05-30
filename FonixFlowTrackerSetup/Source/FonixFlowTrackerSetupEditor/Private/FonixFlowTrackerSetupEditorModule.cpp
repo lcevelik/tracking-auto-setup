@@ -28,11 +28,11 @@ void FFonixFlowTrackerSetupEditorModule::StartupModule()
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(MainPanelTabId,
 		FOnSpawnTab::CreateRaw(this, &FFonixFlowTrackerSetupEditorModule::OnSpawnMainPanelTab))
 		.SetDisplayName(LOCTEXT("PanelTab", "FonixFlow Tracker Setup"))
-		.SetTooltipText(LOCTEXT("PanelTabTooltip", "FonixFlow Tracker Setup"))
+		.SetTooltipText(LOCTEXT("PanelTabTooltip", "One-click tracking setup"))
 		.SetGroup(WorkspaceMenu::GetMenuStructure().GetToolsCategory())
 		.SetIcon(FSlateIcon(FFonixFlowTrackerSetupStyle::GetStyleName(), "FonixFlowTrackerSetup.TabIcon"));
 
-	// 3. Register toolbar button automatically (no Python, no extra steps)
+	// 3. Register toolbar button
 	UToolMenus::RegisterStartupCallback(
 		FSimpleMulticastDelegate::FDelegate::CreateLambda([this]()
 		{
@@ -44,40 +44,14 @@ void FFonixFlowTrackerSetupEditorModule::StartupModule()
 				"FonixFlowTrackerSetup",
 				LOCTEXT("Section", "Tracking"));
 
-			// Main button - click opens the panel
 			Section.AddEntry(FToolMenuEntry::InitToolBarButton(
 				"OpenFonixFlowTracker",
 				FUIAction(FExecuteAction::CreateRaw(
 					this, &FFonixFlowTrackerSetupEditorModule::OnOpenMainPanel)),
-				LOCTEXT("Button", "FonixFlow Tracker Setup"),
-				LOCTEXT("Tooltip", "Open FonixFlow Tracker Setup"),
+				LOCTEXT("Button", "FonixFlow Tracker"),
+				LOCTEXT("Tooltip", "Open FonixFlow Tracker Setup — one-click 3D tracking"),
 				FSlateIcon(FFonixFlowTrackerSetupStyle::GetStyleName(),
 					"FonixFlowTrackerSetup.Icon")));
-
-			// Quick setup submenu
-			Section.AddSubMenu(
-				"QuickSetup",
-				LOCTEXT("QuickSetup", "Quick Setup"),
-				LOCTEXT("QuickSetupTip", "One-click tracking setup"),
-				FNewMenuDelegate::CreateLambda(
-					[this](FMenuBuilder& Sub)
-					{
-						Sub.AddMenuEntry(
-							LOCTEXT("FreeD", "FreeD Camera"),
-							LOCTEXT("FreeDTip", "Quick FreeD setup"),
-							FSlateIcon(),
-							FUIAction(FExecuteAction::CreateRaw(
-								this,
-								&FFonixFlowTrackerSetupEditorModule::OnSetupFreeDQuick)));
-
-						Sub.AddMenuEntry(
-							LOCTEXT("OpenTrack", "OpenTrack Camera"),
-							LOCTEXT("OpenTrackTip", "Quick OpenTrack setup"),
-							FSlateIcon(),
-							FUIAction(FExecuteAction::CreateRaw(
-								this,
-								&FFonixFlowTrackerSetupEditorModule::OnSetupOpenTrackQuick)));
-					}));
 
 			// Tools menu entry
 			UToolMenu* ToolsMenu = UToolMenus::Get()->ExtendMenu(
@@ -90,7 +64,7 @@ void FFonixFlowTrackerSetupEditorModule::StartupModule()
 			ToolsSection.AddMenuEntry(
 				"OpenFonixFlowTrackerTools",
 				LOCTEXT("ToolsEntry", "FonixFlow Tracker Setup"),
-				LOCTEXT("ToolsEntryTip", "Open FonixFlow Tracker Setup"),
+				LOCTEXT("ToolsEntryTip", "One-click 3D tracking setup"),
 				FSlateIcon(FFonixFlowTrackerSetupStyle::GetStyleName(),
 					"FonixFlowTrackerSetup.Icon"),
 				FUIAction(FExecuteAction::CreateRaw(
@@ -122,26 +96,6 @@ TSharedRef<SDockTab> FFonixFlowTrackerSetupEditorModule::OnSpawnMainPanelTab(
 void FFonixFlowTrackerSetupEditorModule::OnOpenMainPanel()
 {
 	FGlobalTabmanager::Get()->TryInvokeTab(MainPanelTabId);
-}
-
-void FFonixFlowTrackerSetupEditorModule::OnSetupFreeDQuick()
-{
-	UWorld* World = GEditor->GetEditorWorldContext().World();
-	if (!World) return;
-
-	FFonixFlowTrackerResult Result =
-		UFonixFlowTrackerSetupSubsystem::SetupFreeDCamera(World);
-	UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: %s"), *Result.Message);
-}
-
-void FFonixFlowTrackerSetupEditorModule::OnSetupOpenTrackQuick()
-{
-	UWorld* World = GEditor->GetEditorWorldContext().World();
-	if (!World) return;
-
-	FFonixFlowTrackerResult Result =
-		UFonixFlowTrackerSetupSubsystem::SetupOpenTrackCamera(World);
-	UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: %s"), *Result.Message);
 }
 
 #undef LOCTEXT_NAMESPACE
