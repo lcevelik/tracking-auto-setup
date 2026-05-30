@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
-#include "FonixFlowTrackerTypes.h"
+#include "FonixFlowTrackerSetupTypes.h"
 #include "FonixFlowTrackerSetupSubsystem.generated.h"
 
 class ULensFile;

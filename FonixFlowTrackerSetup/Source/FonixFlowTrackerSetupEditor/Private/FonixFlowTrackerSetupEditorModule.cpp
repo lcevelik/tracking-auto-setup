@@ -2,7 +2,7 @@
 
 #include "FonixFlowTrackerSetupEditorModule.h"
 #include "FonixFlowTrackerSetupSubsystem.h"
-#include "FonixFlowTrackerTypes.h"
+#include "FonixFlowTrackerSetupTypes.h"
 #include "FonixFlowTrackerSetupStyle.h"
 #include "Widgets/SFonixFlowTrackerSetupPanel.h"
 #include "ToolMenus.h"

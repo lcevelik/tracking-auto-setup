@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Libor Cevelik. All Rights Reserved.
 
 #include "Widgets/SFonixFlowTrackerSetupPanel.h"
-#include "Widgets/SFonixFlowTrackerWizard.h"
+#include "Widgets/SFonixFlowTrackerSetupWizard.h"
 #include "Widgets/SFonixFlowTrackerAIChatPanel.h"
 #include "FonixFlowTrackerSetupStyle.h"
 #include "SlateOptMacros.h"
@@ -149,7 +149,7 @@ void SFonixFlowTrackerSetupPanel::Construct(const FArguments& InArgs)
 			.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
 			.Padding(0)
 			[
-				SAssignNew(WizardWidget, SFonixFlowTrackerWizard)
+				SAssignNew(WizardWidget, SFonixFlowTrackerSetupWizard)
 			]
 		]
 	];

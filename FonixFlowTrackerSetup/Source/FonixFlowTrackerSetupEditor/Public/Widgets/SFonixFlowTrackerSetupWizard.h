@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/Views/SListView.h"
-#include "FonixFlowTrackerTypes.h"
+#include "FonixFlowTrackerSetupTypes.h"
 #include "LensSetupTypes.h"
 
 class ACineCameraActor;
@@ -28,10 +28,10 @@ enum class EWizardStep : uint8
 /**
  * Multi-step wizard for tracking setup.
  */
-class FONIXFLOWTRACKERSETUPEDITOR_API SFonixFlowTrackerWizard : public SCompoundWidget
+class FONIXFLOWTRACKERSETUPEDITOR_API SFonixFlowTrackerSetupWizard : public SCompoundWidget
 {
 public:
-	SLATE_BEGIN_ARGS(SFonixFlowTrackerWizard) {}
+	SLATE_BEGIN_ARGS(SFonixFlowTrackerSetupWizard) {}
 		SLATE_EVENT(FSimpleDelegate, OnSetupComplete)
 	SLATE_END_ARGS()
 

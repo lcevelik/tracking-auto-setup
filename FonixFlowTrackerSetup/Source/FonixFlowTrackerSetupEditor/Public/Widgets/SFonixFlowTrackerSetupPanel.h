@@ -6,7 +6,7 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/Docking/SDockTab.h"
 
-class SFonixFlowTrackerWizard;
+class SFonixFlowTrackerSetupWizard;
 class SFonixFlowTrackerAIChatPanel;
 
 /**
@@ -33,7 +33,7 @@ private:
 	TSharedPtr<SWidget> TabManager;
 
 	/** Child widgets */
-	TSharedPtr<SFonixFlowTrackerWizard> WizardWidget;
+	TSharedPtr<SFonixFlowTrackerSetupWizard> WizardWidget;
 	TSharedPtr<SFonixFlowTrackerAIChatPanel> AIChatWidget;
 
 	/** Build tab content */

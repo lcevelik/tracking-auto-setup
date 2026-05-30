@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "LensSetupTypes.h"
-#include "FonixFlowTrackerTypes.generated.h"
+#include "FonixFlowTrackerSetupTypes.generated.h"
 
 /** Supported tracking protocols */
 UENUM(BlueprintType)

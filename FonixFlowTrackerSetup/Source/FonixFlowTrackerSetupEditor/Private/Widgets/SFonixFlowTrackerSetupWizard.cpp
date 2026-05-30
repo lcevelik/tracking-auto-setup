@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Libor Cevelik. All Rights Reserved.
 
-#include "Widgets/SFonixFlowTrackerWizard.h"
+#include "Widgets/SFonixFlowTrackerSetupWizard.h"
 #include "FonixFlowTrackerSetupSubsystem.h"
 #include "LensSetupTypes.h"
 #include "SlateOptMacros.h"
@@ -21,9 +21,9 @@
 #include "Editor.h"
 #include "EditorStyleSet.h"
 
-#define LOCTEXT_NAMESPACE "SFonixFlowTrackerWizard"
+#define LOCTEXT_NAMESPACE "SFonixFlowTrackerSetupWizard"
 
-void SFonixFlowTrackerWizard::Construct(const FArguments& InArgs)
+void SFonixFlowTrackerSetupWizard::Construct(const FArguments& InArgs)
 {
 	OnSetupComplete = InArgs._OnSetupComplete;
 
@@ -53,7 +53,7 @@ void SFonixFlowTrackerWizard::Construct(const FArguments& InArgs)
 			.Padding(0, 0, 0, 4)
 			[
 				SNew(STextBlock)
-				.Text_Raw(this, &SFonixFlowTrackerWizard::GetStepNumberText)
+				.Text_Raw(this, &SFonixFlowTrackerSetupWizard::GetStepNumberText)
 				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
 				.ColorAndOpacity(FSlateColor(FLinearColor::Gray))
 			]
@@ -63,7 +63,7 @@ void SFonixFlowTrackerWizard::Construct(const FArguments& InArgs)
 			.Padding(0, 0, 0, 4)
 			[
 				SNew(STextBlock)
-				.Text_Raw(this, &SFonixFlowTrackerWizard::GetStepTitle)
+				.Text_Raw(this, &SFonixFlowTrackerSetupWizard::GetStepTitle)
 				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 14))
 			]
 
@@ -72,7 +72,7 @@ void SFonixFlowTrackerWizard::Construct(const FArguments& InArgs)
 			.Padding(0, 0, 0, 12)
 			[
 				SNew(STextBlock)
-				.Text_Raw(this, &SFonixFlowTrackerWizard::GetStepDescription)
+				.Text_Raw(this, &SFonixFlowTrackerSetupWizard::GetStepDescription)
 				.AutoWrapText(true)
 				.ColorAndOpacity(FSlateColor(FLinearColor(0.8f, 0.8f, 0.8f)))
 			]
@@ -126,7 +126,7 @@ void SFonixFlowTrackerWizard::Construct(const FArguments& InArgs)
 						GoToPreviousStep();
 						return FReply::Handled();
 					})
-					.IsEnabled_Raw(this, &SFonixFlowTrackerWizard::CanGoPrevious)
+					.IsEnabled_Raw(this, &SFonixFlowTrackerSetupWizard::CanGoPrevious)
 				]
 
 				+ SHorizontalBox::Slot()
@@ -161,14 +161,14 @@ void SFonixFlowTrackerWizard::Construct(const FArguments& InArgs)
 						}
 						return FReply::Handled();
 					})
-					.IsEnabled_Raw(this, &SFonixFlowTrackerWizard::CanGoNext)
+					.IsEnabled_Raw(this, &SFonixFlowTrackerSetupWizard::CanGoNext)
 				]
 			]
 		]
 	];
 }
 
-void SFonixFlowTrackerWizard::GoToNextStep()
+void SFonixFlowTrackerSetupWizard::GoToNextStep()
 {
 	if (CurrentStep < EWizardStep::Complete)
 	{
@@ -185,7 +185,7 @@ void SFonixFlowTrackerWizard::GoToNextStep()
 	}
 }
 
-void SFonixFlowTrackerWizard::GoToPreviousStep()
+void SFonixFlowTrackerSetupWizard::GoToPreviousStep()
 {
 	if (CurrentStep > EWizardStep::Protocol)
 	{
@@ -193,17 +193,17 @@ void SFonixFlowTrackerWizard::GoToPreviousStep()
 	}
 }
 
-bool SFonixFlowTrackerWizard::CanGoNext() const
+bool SFonixFlowTrackerSetupWizard::CanGoNext() const
 {
 	return CurrentStep < EWizardStep::Complete;
 }
 
-bool SFonixFlowTrackerWizard::CanGoPrevious() const
+bool SFonixFlowTrackerSetupWizard::CanGoPrevious() const
 {
 	return CurrentStep > EWizardStep::Protocol;
 }
 
-TSharedRef<SWidget> SFonixFlowTrackerWizard::GetCurrentStepContent()
+TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::GetCurrentStepContent()
 {
 	switch (CurrentStep)
 	{
@@ -220,7 +220,7 @@ TSharedRef<SWidget> SFonixFlowTrackerWizard::GetCurrentStepContent()
 	}
 }
 
-FText SFonixFlowTrackerWizard::GetStepTitle() const
+FText SFonixFlowTrackerSetupWizard::GetStepTitle() const
 {
 	switch (CurrentStep)
 	{
@@ -237,7 +237,7 @@ FText SFonixFlowTrackerWizard::GetStepTitle() const
 	}
 }
 
-FText SFonixFlowTrackerWizard::GetStepDescription() const
+FText SFonixFlowTrackerSetupWizard::GetStepDescription() const
 {
 	switch (CurrentStep)
 	{
@@ -264,14 +264,14 @@ FText SFonixFlowTrackerWizard::GetStepDescription() const
 	}
 }
 
-FText SFonixFlowTrackerWizard::GetStepNumberText() const
+FText SFonixFlowTrackerSetupWizard::GetStepNumberText() const
 {
 	int32 StepNum = static_cast<uint8>(CurrentStep) + 1;
 	return FText::Format(LOCTEXT("StepOf", "Step {0} of 9"), FText::AsNumber(StepNum));
 }
 
 // Step 1: Protocol Selection (same as before)
-TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildProtocolStep()
+TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildProtocolStep()
 {
 	return SNew(SVerticalBox)
 
@@ -395,7 +395,7 @@ TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildProtocolStep()
 }
 
 // Step 2: Network (same as before, abbreviated)
-TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildNetworkStep()
+TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildNetworkStep()
 {
 	TSharedRef<SVerticalBox> Content = SNew(SVerticalBox);
 
@@ -460,7 +460,7 @@ TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildNetworkStep()
 }
 
 // Step 3: Camera Selection (same as before)
-TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildCameraStep()
+TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildCameraStep()
 {
 	return SNew(SVerticalBox)
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 12)
@@ -518,7 +518,7 @@ TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildCameraStep()
 }
 
 // Step 4: Lens File Selection (NEW)
-TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildLensSelectionStep()
+TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildLensSelectionStep()
 {
 	return SNew(SVerticalBox)
 
@@ -604,7 +604,7 @@ TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildLensSelectionStep()
 }
 
 // Step 5: Lens Encoder Calibration (updated with new types)
-TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildLensCalibrationStep()
+TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildLensCalibrationStep()
 {
 	return SNew(SVerticalBox)
 
@@ -740,7 +740,7 @@ TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildLensCalibrationStep()
 }
 
 // Step 6: Sensor Settings (NEW)
-TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildSensorSettingsStep()
+TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildSensorSettingsStep()
 {
 	return SNew(SVerticalBox)
 
@@ -866,7 +866,7 @@ TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildSensorSettingsStep()
 }
 
 // Step 7: Anchor Point (same as before)
-TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildAnchorPointStep()
+TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildAnchorPointStep()
 {
 	return SNew(SVerticalBox)
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 12)
@@ -919,7 +919,7 @@ TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildAnchorPointStep()
 }
 
 // Step 8: Review (updated with lens info)
-TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildReviewStep()
+TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildReviewStep()
 {
 	auto AddRow = [](SVerticalBox& Parent, const FText& Label, const FText& Value)
 	{
@@ -1014,7 +1014,7 @@ TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildReviewStep()
 }
 
 // Step 9: Complete
-TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildCompleteStep()
+TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildCompleteStep()
 {
 	return SNew(SVerticalBox)
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 16).HAlign(HAlign_Center)
@@ -1029,7 +1029,7 @@ TSharedRef<SWidget> SFonixFlowTrackerWizard::BuildCompleteStep()
 	;
 }
 
-void SFonixFlowTrackerWizard::RefreshCameraList()
+void SFonixFlowTrackerSetupWizard::RefreshCameraList()
 {
 	AvailableCameras.Empty();
 	UWorld* World = GEditor->GetEditorWorldContext().World();
@@ -1043,13 +1043,13 @@ void SFonixFlowTrackerWizard::RefreshCameraList()
 	if (CameraListView.IsValid()) CameraListView->RequestListRefresh();
 }
 
-void SFonixFlowTrackerWizard::RefreshLensFileList()
+void SFonixFlowTrackerSetupWizard::RefreshLensFileList()
 {
 	AvailableLensFiles = ULensSetupUtility::FindAllLensFiles();
 	if (LensFileListView.IsValid()) LensFileListView->RequestListRefresh();
 }
 
-void SFonixFlowTrackerWizard::ApplySetup()
+void SFonixFlowTrackerSetupWizard::ApplySetup()
 {
 	UWorld* World = GEditor->GetEditorWorldContext().World();
 	if (!World) return;
