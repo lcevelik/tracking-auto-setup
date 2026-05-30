@@ -1,0 +1,29 @@
+# Binaries
+Binaries/
+*.dll
+*.exe
+*.pdb
+
+# Build
+Intermediate/
+Build/
+*.obj
+*.log
+
+# IDE
+.vs/
+.vscode/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+
+# OS
+.DS_Store
+Thumbs.db
+
+# UE Specific
+DerivedDataCache/
+Saved/
+*.uasset
+*.umap
