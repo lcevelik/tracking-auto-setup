@@ -70,6 +70,11 @@ private:
 	// Source GUID for cleanup
 	FGuid ActiveSourceGuid;
 
+	// Lens type SBox references for visibility control
+	TSharedPtr<SBox> PrimeLensInputBox;
+	TSharedPtr<SBox> ZoomLensInputBox;
+	TSharedPtr<SBox> ZoomCalibrationBox;
+
 	// UI Build
 	TSharedRef<SWidget> BuildHeader();
 	TSharedRef<SWidget> BuildProtocolSection();
@@ -93,6 +98,7 @@ private:
 	void AddLog(const FString& Message);
 	void PollLiveLinkData();
 	void StopLiveLinkPolling();
+	void UpdateLensTypeVisibility();
 
 	// Camera list
 	TSharedRef<ITableRow> OnGenerateCameraRow(TWeakObjectPtr<ACineCameraActor> InItem, const TSharedRef<STableViewBase>& OwnerTable);

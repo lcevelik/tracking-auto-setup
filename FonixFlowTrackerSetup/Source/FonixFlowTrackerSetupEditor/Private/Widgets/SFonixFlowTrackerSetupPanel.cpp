@@ -27,6 +27,7 @@
 #include "Roles/LiveLinkCameraTypes.h"
 #include "ILiveLinkClient.h"
 #include "LiveLinkSourceFactory.h"
+#include "LiveLinkSourceSettings.h"
 #include "Engine/World.h"
 #include "Engine/Engine.h"
 #include "EngineUtils.h"
@@ -317,7 +318,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildLensTypeSection()
 			[
 				SNew(SCheckBox)
 				.IsChecked(bUsePrimeLens ? ECheckBoxState::Checked : ECheckBoxState::Unchecked)
-				.OnCheckStateChanged_Lambda([this](ECheckBoxState) { bUsePrimeLens = true; })
+				.OnCheckStateChanged_Lambda([this](ECheckBoxState) { bUsePrimeLens = true; UpdateLensTypeVisibility(); })
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(8, 0, 0, 0)
 			[
@@ -334,8 +335,8 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildLensTypeSection()
 	// Prime lens focal length input
 	+ SVerticalBox::Slot().AutoHeight().Padding(24, 0, 0, 8)
 	[
-		SNew(SBox)
-		.Visibility_Lambda([this]() -> EVisibility { return bUsePrimeLens ? EVisibility::Visible : EVisibility::Collapsed; })
+		SAssignNew(PrimeLensInputBox, SBox)
+		.Visibility(bUsePrimeLens ? EVisibility::Visible : EVisibility::Collapsed)
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0, 0, 8, 0)
@@ -365,7 +366,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildLensTypeSection()
 			[
 				SNew(SCheckBox)
 				.IsChecked(!bUsePrimeLens ? ECheckBoxState::Checked : ECheckBoxState::Unchecked)
-				.OnCheckStateChanged_Lambda([this](ECheckBoxState) { bUsePrimeLens = false; })
+				.OnCheckStateChanged_Lambda([this](ECheckBoxState) { bUsePrimeLens = false; UpdateLensTypeVisibility(); })
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(8, 0, 0, 0)
 			[
@@ -382,8 +383,8 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildLensTypeSection()
 	// Zoom lens range inputs
 	+ SVerticalBox::Slot().AutoHeight().Padding(24, 0, 0, 4)
 	[
-		SNew(SBox)
-		.Visibility_Lambda([this]() -> EVisibility { return !bUsePrimeLens ? EVisibility::Visible : EVisibility::Collapsed; })
+		SAssignNew(ZoomLensInputBox, SBox)
+		.Visibility(!bUsePrimeLens ? EVisibility::Visible : EVisibility::Collapsed)
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0, 0, 8, 0)
@@ -713,8 +714,8 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildCalibrationSection()
 	// Focal Length (only for zoom)
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
 	[
-		SNew(SBox)
-		.Visibility_Lambda([this]() -> EVisibility { return !bUsePrimeLens ? EVisibility::Visible : EVisibility::Collapsed; })
+		SAssignNew(ZoomCalibrationBox, SBox)
+		.Visibility(!bUsePrimeLens ? EVisibility::Visible : EVisibility::Collapsed)
 		[
 			SNew(SBorder)
 			.BorderImage(FAppStyle::GetBrush("ToolPanel.DarkGroupBorder"))
@@ -857,15 +858,13 @@ void SFonixFlowTrackerSetupPanel::PollLiveLinkData()
 		LiveLinkClient = &ModularFeatures.GetModularFeature<ILiveLinkClient>(ILiveLinkClient::ModularFeatureName);
 	}
 
-	if (!LiveLinkClient || !ActiveSourceGuid.IsValid()) return;
+	if (!LiveLinkClient) return;
 
-	// Get all subjects from our source
+	// Get all subjects — don't filter by source GUID (subject may not be linked yet)
 	TArray<FLiveLinkSubjectKey> AllSubjects = LiveLinkClient->GetSubjects(false, false);
 
 	for (const FLiveLinkSubjectKey& SubjectKey : AllSubjects)
 	{
-		if (SubjectKey.Source != ActiveSourceGuid) continue;
-
 		// Check if subject supports camera role
 		if (!LiveLinkClient->DoesSubjectSupportsRole_AnyThread(SubjectKey, ULiveLinkCameraRole::StaticClass()))
 			continue;
@@ -882,6 +881,7 @@ void SFonixFlowTrackerSetupPanel::PollLiveLinkData()
 				LiveLinkZoomValue = CameraFrame->FocalLength;
 			}
 		}
+		break; // Use first camera subject found
 	}
 }
 
@@ -896,6 +896,16 @@ void SFonixFlowTrackerSetupPanel::StopLiveLinkPolling()
 			World->GetTimerManager().ClearTimer(LiveLinkPollTimerHandle);
 		}
 	}
+}
+
+void SFonixFlowTrackerSetupPanel::UpdateLensTypeVisibility()
+{
+	EVisibility PrimeVis = bUsePrimeLens ? EVisibility::Visible : EVisibility::Collapsed;
+	EVisibility ZoomVis = !bUsePrimeLens ? EVisibility::Visible : EVisibility::Collapsed;
+
+	if (PrimeLensInputBox.IsValid()) PrimeLensInputBox->SetVisibility(PrimeVis);
+	if (ZoomLensInputBox.IsValid()) ZoomLensInputBox->SetVisibility(ZoomVis);
+	if (ZoomCalibrationBox.IsValid()) ZoomCalibrationBox->SetVisibility(ZoomVis);
 }
 
 // ── Setup ───────────────────────────────────────────────────────────
@@ -1187,22 +1197,106 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 	{
 		AddLog(FString::Printf(TEXT("Lens file: %s"), *LensFile->GetName()));
 		AddLog(TEXT("Saved at: /Game/FonixFlowTrackerSetup/TrackedLens"));
+	}
 
-		// Apply to LiveLink controller
-		ULiveLinkComponentController* LLController = CineCamera->FindComponentByClass<ULiveLinkComponentController>();
-		if (LLController)
+	// Apply to LiveLink controller + FreeD source settings
+	ULiveLinkComponentController* LLController = CineCamera->FindComponentByClass<ULiveLinkComponentController>();
+	if (LLController)
+	{
+		LLController->SubjectRepresentation.Role = ULiveLinkCameraRole::StaticClass();
+
+		// Set UseCameraRange on the controller via reflection
+		for (UObject* Comp : LLController->GetChildren())
 		{
-			LLController->SubjectRepresentation.Role = ULiveLinkCameraRole::StaticClass();
-			AddLog(TEXT("Applied to LiveLink controller"));
+			if (Comp && Comp->GetClass()->GetName().Contains(TEXT("CameraController")))
+			{
+				FBoolProperty* UseCameraRangeProp = CastField<FBoolProperty>(
+					Comp->GetClass()->FindPropertyByName(FName("bUseCameraRange")));
+				if (UseCameraRangeProp)
+				{
+					UseCameraRangeProp->SetPropertyValue_InContainer(Comp, true);
+					AddLog(TEXT("  UseCameraRange enabled on controller"));
+				}
+			}
 		}
-		else
-		{
-			AddLog(TEXT("WARNING: No LiveLink controller — run Setup Now first"));
-		}
+		AddLog(TEXT("Applied to LiveLink controller"));
 	}
 	else
 	{
-		AddLog(TEXT("ERROR: Failed to create lens file"));
+		AddLog(TEXT("WARNING: No LiveLink controller — run Setup Now first"));
+	}
+
+	// Set FreeD source UseManualRange via reflection
+	ILiveLinkClient* LLClient = nullptr;
+	IModularFeatures& ModularFeatures = IModularFeatures::Get();
+	if (ModularFeatures.IsModularFeatureAvailable(ILiveLinkClient::ModularFeatureName))
+	{
+		LLClient = &ModularFeatures.GetModularFeature<ILiveLinkClient>(ILiveLinkClient::ModularFeatureName);
+	}
+
+	if (LLClient && ActiveSourceGuid.IsValid())
+	{
+		ULiveLinkSourceSettings* SourceSettings = LLClient->GetSourceSettings(ActiveSourceGuid);
+		if (SourceSettings)
+		{
+			// Find FocusDistanceEncoderData and FocalLengthEncoderData structs
+			UScriptStruct* EncoderDataStruct = nullptr;
+			for (TObjectIterator<UScriptStruct> It; It; ++It)
+			{
+				if (It->GetName() == TEXT("FreeDEncoderData"))
+				{
+					EncoderDataStruct = *It;
+					break;
+				}
+			}
+
+			if (EncoderDataStruct)
+			{
+				// Set focus encoder manual range
+				FStructProperty* FocusProp = CastField<FStructProperty>(
+					SourceSettings->GetClass()->FindPropertyByName(FName("FocusDistanceEncoderData")));
+				if (FocusProp)
+				{
+					void* FocusData = FocusProp->ContainerPtrToValuePtr<void>(SourceSettings);
+					FBoolProperty* bValid = CastField<FBoolProperty>(EncoderDataStruct->FindPropertyByName(FName("bIsValid")));
+					FBoolProperty* bManual = CastField<FBoolProperty>(EncoderDataStruct->FindPropertyByName(FName("bUseManualRange")));
+					FIntProperty* MinProp = CastField<FIntProperty>(EncoderDataStruct->FindPropertyByName(FName("Min")));
+					FIntProperty* MaxProp = CastField<FIntProperty>(EncoderDataStruct->FindPropertyByName(FName("Max")));
+
+					if (bValid) bValid->SetPropertyValue_InContainer(FocusData, true);
+					if (bManual) bManual->SetPropertyValue_InContainer(FocusData, true);
+					if (MinProp) MinProp->SetPropertyValue_InContainer(FocusData, FocusEncoderMin);
+					if (MaxProp) MaxProp->SetPropertyValue_InContainer(FocusData, FocusEncoderMax);
+					AddLog(FString::Printf(TEXT("  FreeD Focus: UseManualRange=true, Min=%d, Max=%d"), FocusEncoderMin, FocusEncoderMax));
+				}
+
+				// Set focal length encoder manual range
+				FStructProperty* ZoomProp = CastField<FStructProperty>(
+					SourceSettings->GetClass()->FindPropertyByName(FName("FocalLengthEncoderData")));
+				if (ZoomProp)
+				{
+					void* ZoomData = ZoomProp->ContainerPtrToValuePtr<void>(SourceSettings);
+					FBoolProperty* bValid = CastField<FBoolProperty>(EncoderDataStruct->FindPropertyByName(FName("bIsValid")));
+					FBoolProperty* bManual = CastField<FBoolProperty>(EncoderDataStruct->FindPropertyByName(FName("bUseManualRange")));
+					FIntProperty* MinProp = CastField<FIntProperty>(EncoderDataStruct->FindPropertyByName(FName("Min")));
+					FIntProperty* MaxProp = CastField<FIntProperty>(EncoderDataStruct->FindPropertyByName(FName("Max")));
+
+					if (bUsePrimeLens)
+					{
+						if (bValid) bValid->SetPropertyValue_InContainer(ZoomData, false);
+						AddLog(TEXT("  FreeD Zoom: disabled (prime lens)"));
+					}
+					else
+					{
+						if (bValid) bValid->SetPropertyValue_InContainer(ZoomData, true);
+						if (bManual) bManual->SetPropertyValue_InContainer(ZoomData, true);
+						if (MinProp) MinProp->SetPropertyValue_InContainer(ZoomData, ZoomEncoderMin);
+						if (MaxProp) MaxProp->SetPropertyValue_InContainer(ZoomData, ZoomEncoderMax);
+						AddLog(FString::Printf(TEXT("  FreeD Zoom: UseManualRange=true, Min=%d, Max=%d"), ZoomEncoderMin, ZoomEncoderMax));
+					}
+				}
+			}
+		}
 	}
 
 	UCineCameraComponent* CineComp = CineCamera->GetCineCameraComponent();
