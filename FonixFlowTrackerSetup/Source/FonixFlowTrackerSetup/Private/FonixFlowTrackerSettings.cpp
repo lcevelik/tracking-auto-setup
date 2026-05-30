@@ -22,10 +22,12 @@ FName UFonixFlowTrackerSettings::GetCategoryName() const
 	return TEXT("Plugins");
 }
 
+#if WITH_EDITOR
 FText UFonixFlowTrackerSettings::GetSectionText() const
 {
 	return FText::FromString(TEXT("FonixFlow Tracker Setup"));
 }
+#endif
 
 const UFonixFlowTrackerSettings* UFonixFlowTrackerSettings::Get()
 {
