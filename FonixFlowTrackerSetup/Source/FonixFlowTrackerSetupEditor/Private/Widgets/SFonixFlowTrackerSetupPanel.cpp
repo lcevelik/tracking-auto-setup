@@ -583,7 +583,6 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 
 	// Create new component
 	LLController = NewObject<ULiveLinkComponentController>(CineCamera, TEXT("FonixFlowLiveLinkController"));
-	LLController->SetRelativeLocation(FVector::ZeroVector);
 	LLController->RegisterComponent();
 	CineCamera->AddInstanceComponent(LLController);
 
