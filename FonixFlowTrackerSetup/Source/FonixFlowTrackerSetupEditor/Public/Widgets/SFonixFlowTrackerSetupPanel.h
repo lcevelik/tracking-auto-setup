@@ -22,6 +22,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	~SFonixFlowTrackerSetupPanel();
 
 private:
 	// State
@@ -36,7 +37,17 @@ private:
 	TSharedPtr<SListView<TWeakObjectPtr<ACineCameraActor>>> CameraListView;
 	ACineCameraActor* SelectedCamera = nullptr;
 
-	// Calibration
+	// Lens type
+	bool bUsePrimeLens = false;
+	float PrimeLensFocalLengthMM = 50.0f;
+
+	// LiveLink polling — actual encoder values (0-1 normalized from FreeD)
+	float LiveLinkFocusValue = 0.0f;
+	float LiveLinkZoomValue = 0.0f;
+	bool bLiveLinkPollingActive = false;
+	FTimerHandle LiveLinkPollTimerHandle;
+
+	// Calibration — captured raw encoder values
 	int32 FocusEncoderMin = 0;
 	int32 FocusEncoderMax = 0x00FFFFFF;
 	int32 ZoomEncoderMin = 0;
@@ -56,11 +67,15 @@ private:
 	bool bSetupSuccess = false;
 	TArray<FString> SetupLog;
 
+	// Source GUID for cleanup
+	FGuid ActiveSourceGuid;
+
 	// UI Build
 	TSharedRef<SWidget> BuildHeader();
 	TSharedRef<SWidget> BuildProtocolSection();
 	TSharedRef<SWidget> BuildNetworkSection();
 	TSharedRef<SWidget> BuildCameraSection();
+	TSharedRef<SWidget> BuildLensTypeSection();
 	TSharedRef<SWidget> BuildSetupButton();
 	TSharedRef<SWidget> BuildCalibrationSection();
 	TSharedRef<SWidget> BuildStatusSection();
@@ -76,6 +91,8 @@ private:
 	void ApplyCalibration();
 	void DetectLocalIP();
 	void AddLog(const FString& Message);
+	void PollLiveLinkData();
+	void StopLiveLinkPolling();
 
 	// Camera list
 	TSharedRef<ITableRow> OnGenerateCameraRow(TWeakObjectPtr<ACineCameraActor> InItem, const TSharedRef<STableViewBase>& OwnerTable);
@@ -89,6 +106,8 @@ private:
 	FText GetZoomMaxText() const;
 	FText GetSetupStatusText() const;
 	FText GetSelectedCameraText() const;
+	FText GetLiveLinkFocusText() const;
+	FText GetLiveLinkZoomText() const;
 	EVisibility GetCalibrationVisibility() const;
 	bool IsCalibrationReady() const;
 	bool IsSetupButtonEnabled() const;
