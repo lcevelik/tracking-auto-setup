@@ -174,6 +174,7 @@ bool UFonixFlowTrackerSetupSubsystem::RemoveFonixFlowTracker(
 	if (!WorldContextObject) return false;
 
 	ILiveLinkClient* LiveLinkClient = nullptr;
+#if WITH_EDITOR
 	if (FModuleManager::Get().IsModuleLoaded("LiveLink"))
 	{
 		IModularFeatures& ModularFeatures = IModularFeatures::Get();
@@ -182,6 +183,7 @@ bool UFonixFlowTrackerSetupSubsystem::RemoveFonixFlowTracker(
 			LiveLinkClient = &ModularFeatures.GetModularFeature<ILiveLinkClient>(ILiveLinkClient::ModularFeatureName);
 		}
 	}
+#endif
 
 	if (LiveLinkClient && LiveLinkSourceGuid.IsValid())
 	{
@@ -201,6 +203,7 @@ FGuid UFonixFlowTrackerSetupSubsystem::CreateLiveLinkSource(const FTrackingConne
 	FGuid SourceGuid;
 
 	ILiveLinkClient* LiveLinkClient = nullptr;
+#if WITH_EDITOR
 	if (FModuleManager::Get().IsModuleLoaded(TEXT("LiveLink")))
 	{
 		IModularFeatures& ModularFeatures = IModularFeatures::Get();
@@ -209,6 +212,7 @@ FGuid UFonixFlowTrackerSetupSubsystem::CreateLiveLinkSource(const FTrackingConne
 			LiveLinkClient = &ModularFeatures.GetModularFeature<ILiveLinkClient>(ILiveLinkClient::ModularFeatureName);
 		}
 	}
+#endif
 
 	if (!LiveLinkClient)
 	{
@@ -264,7 +268,9 @@ ACineCameraActor* UFonixFlowTrackerSetupSubsystem::CreateTrackedCamera(UWorld* W
 
 		if (CineCamera)
 		{
+#if WITH_EDITOR
 			CineCamera->SetActorLabel(Config.CameraName);
+#endif
 			UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Created camera actor '%s'"), *Config.CameraName);
 		}
 	}
@@ -296,7 +302,9 @@ AActor* UFonixFlowTrackerSetupSubsystem::CreateAnchorPoint(UWorld* World, const 
 
 	if (AnchorActor)
 	{
+#if WITH_EDITOR
 		AnchorActor->SetActorLabel(Config.CameraName + TEXT("_Anchor"));
+#endif
 
 		USceneComponent* RootComp = NewObject<USceneComponent>(AnchorActor);
 		RootComp->SetWorldLocation(Config.AnchorLocation);
