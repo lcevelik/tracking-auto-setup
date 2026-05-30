@@ -1205,18 +1205,15 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 	{
 		LLController->SubjectRepresentation.Role = ULiveLinkCameraRole::StaticClass();
 
-		// Set UseCameraRange on the controller via reflection
-		for (UObject* Comp : LLController->GetChildren())
+		// Set UseCameraRange on the camera controller
+		if (LLController->ControllerMap.Contains(ULiveLinkCameraRole::StaticClass()))
 		{
-			if (Comp && Comp->GetClass()->GetName().Contains(TEXT("CameraController")))
+			ULiveLinkCameraController* CamController = Cast<ULiveLinkCameraController>(
+				LLController->ControllerMap[ULiveLinkCameraRole::StaticClass()]);
+			if (CamController)
 			{
-				FBoolProperty* UseCameraRangeProp = CastField<FBoolProperty>(
-					Comp->GetClass()->FindPropertyByName(FName("bUseCameraRange")));
-				if (UseCameraRangeProp)
-				{
-					UseCameraRangeProp->SetPropertyValue_InContainer(Comp, true);
-					AddLog(TEXT("  UseCameraRange enabled on controller"));
-				}
+				CamController->bUseCameraRange = true;
+				AddLog(TEXT("  UseCameraRange enabled on camera controller"));
 			}
 		}
 		AddLog(TEXT("Applied to LiveLink controller"));
