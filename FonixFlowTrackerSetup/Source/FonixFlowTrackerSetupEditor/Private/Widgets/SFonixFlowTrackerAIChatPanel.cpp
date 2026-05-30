@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Libor Cevelik. All Rights Reserved.
 
 #include "Widgets/SFonixFlowTrackerAIChatPanel.h"
+#include "FonixFlowTrackerSettings.h"
 #include "SlateOptMacros.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
@@ -8,7 +9,7 @@
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
-#include "Widgets/Views/SListView.h"
+#include "Widgets/Input/SHyperlink.h"
 #include "EditorStyleSet.h"
 #include "HttpModule.h"
 #include "Interfaces/IHttpRequest.h"
@@ -21,9 +22,19 @@
 
 void SFonixFlowTrackerAIChatPanel::Construct(const FArguments& InArgs)
 {
+	const UFonixFlowTrackerSettings* Settings = UFonixFlowTrackerSettings::Get();
+	bool bHasKey = Settings && !Settings->AIAPIKey.IsEmpty();
+
 	ChildSlot
 	[
 		SNew(SVerticalBox)
+
+		// API Key warning (if not configured)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		[
+			BuildAPIKeyWarning().ToSharedRef()
+		]
 
 		// Header
 		+ SVerticalBox::Slot()
@@ -34,7 +45,7 @@ void SFonixFlowTrackerAIChatPanel::Construct(const FArguments& InArgs)
 			.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
 			[
 				SNew(STextBlock)
-				.Text(LOCTEXT("ChatHeader", "Tracking Setup Assistant"))
+				.Text(LOCTEXT("ChatHeader", "FonixFlow Tracker — AI Assistant"))
 				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 14))
 			]
 		]
@@ -64,7 +75,7 @@ void SFonixFlowTrackerAIChatPanel::Construct(const FArguments& InArgs)
 				SAssignNew(InputBox, SMultiLineEditableTextBox)
 				.HintText(LOCTEXT("InputHint", "Ask about tracking setup, FreeD, OpenTrack, lens calibration..."))
 				.OnTextCommitted_Raw(this, &SFonixFlowTrackerAIChatPanel::OnInputTextCommitted)
-				.IsReadOnly(false)
+				.IsReadOnly(!bHasKey)
 				.AutoWrapText(true)
 				.MinDesiredHeight(60)
 			]
@@ -80,26 +91,82 @@ void SFonixFlowTrackerAIChatPanel::Construct(const FArguments& InArgs)
 					OnSendMessage();
 					return FReply::Handled();
 				})
-				.IsEnabled_Lambda([this]() -> bool
+				.IsEnabled_Lambda([this, bHasKey]() -> bool
 				{
-					return !bIsWaitingForResponse;
+					return bHasKey && !bIsWaitingForResponse;
 				})
 			]
 		]
 	];
 
-	// Add welcome message
+	// Welcome message
 	FChatMessage WelcomeMsg;
 	WelcomeMsg.Role = TEXT("assistant");
-	WelcomeMsg.Content = TEXT("Welcome! I'm your tracking setup assistant. I can help with:\n\n"
-		"• FreeD protocol configuration\n"
-		"• OpenTrack IO setup\n"
-		"• Lens calibration and encoder ranges\n"
-		"• Camera tracking best practices\n"
-		"• Virtual Production workflows\n\n"
-		"What would you like to know?");
 	WelcomeMsg.Timestamp = FDateTime::Now();
+
+	if (bHasKey)
+	{
+		WelcomeMsg.Content = TEXT("Welcome! I'm your tracking setup assistant. I can help with:\n\n"
+			"• FreeD protocol configuration\n"
+			"• OpenTrack IO setup\n"
+			"• Lens calibration and encoder ranges\n"
+			"• Camera tracking best practices\n"
+			"• Virtual Production workflows\n\n"
+			"What would you like to know?");
+	}
+	else
+	{
+		WelcomeMsg.Content = TEXT("AI Chat is not configured yet.\n\n"
+			"To enable it, add your API key:\n"
+			"Edit > Project Settings > Plugins > FonixFlow Tracker Setup > AI Chat > API Key\n\n"
+			"Supports OpenRouter, OpenAI, or any OpenAI-compatible API.");
+	}
+
+	Messages.Add(WelcomeMsg);
 	AddMessageToChat(WelcomeMsg);
+}
+
+TSharedPtr<SWidget> SFonixFlowTrackerAIChatPanel::BuildAPIKeyWarning()
+{
+	const UFonixFlowTrackerSettings* Settings = UFonixFlowTrackerSettings::Get();
+	bool bHasKey = Settings && !Settings->AIAPIKey.IsEmpty();
+
+	if (bHasKey)
+	{
+		return SNew(SBox).Visibility(EVisibility::Collapsed);
+	}
+
+	return SNew(SBorder)
+		.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+		.BorderBackgroundColor(FSlateColor(FLinearColor(0.8f, 0.4f, 0.1f)))
+		.Padding(12, 8)
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("NoAPIKey", "⚠ AI Chat requires an API key"))
+				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 12))
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0, 4, 0, 0)
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("APIKeyInstructions", "Go to: Edit > Project Settings > Plugins > FonixFlow Tracker Setup"))
+				.AutoWrapText(true)
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0, 4, 0, 0)
+			[
+				SNew(STextBlock)
+				.Text(LOCTEXT("APIKeyHint", "Paste your OpenRouter or OpenAI API key in the 'API Key' field."))
+				.AutoWrapText(true)
+				.ColorAndOpacity(FSlateColor(FLinearColor(0.7f, 0.7f, 0.7f)))
+			]
+		];
 }
 
 void SFonixFlowTrackerAIChatPanel::OnSendMessage()
@@ -123,7 +190,6 @@ void SFonixFlowTrackerAIChatPanel::OnInputTextCommitted(const FText& Text, EText
 
 	FString UserMessage = Text.ToString();
 
-	// Add user message
 	FChatMessage UserMsg;
 	UserMsg.Role = TEXT("user");
 	UserMsg.Content = UserMessage;
@@ -131,10 +197,7 @@ void SFonixFlowTrackerAIChatPanel::OnInputTextCommitted(const FText& Text, EText
 	Messages.Add(UserMsg);
 	AddMessageToChat(UserMsg);
 
-	// Clear input
 	InputBox->SetText(FText::GetEmpty());
-
-	// Call AI API
 	CallAIAPI(UserMessage);
 }
 
@@ -146,10 +209,6 @@ void SFonixFlowTrackerAIChatPanel::AddMessageToChat(const FChatMessage& Message)
 		? LOCTEXT("UserLabel", "You")
 		: LOCTEXT("AssistantLabel", "Assistant");
 
-	const FSlateBrush* IconBrush = Message.Role == TEXT("user")
-		? FEditorStyle::GetBrush("ClassIcon.Actor")
-		: FEditorStyle::GetBrush("Icons.Help");
-
 	ChatMessagesBox->AddSlot()
 	.AutoHeight()
 	.Padding(4, 2)
@@ -159,53 +218,30 @@ void SFonixFlowTrackerAIChatPanel::AddMessageToChat(const FChatMessage& Message)
 		.Padding(8)
 		[
 			SNew(SVerticalBox)
-
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			[
 				SNew(SHorizontalBox)
-
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				[
-					SNew(STextBlock)
-					.Text(RoleLabel)
-					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
-				]
-
-				+ SHorizontalBox::Slot()
-				.FillWidth(1.0f)
-				.HAlign(HAlign_Right)
-				[
-					SNew(STextBlock)
-					.Text(FText::FromString(Message.Timestamp.ToString(TEXT("%H:%M"))))
+				+ SHorizontalBox::Slot().AutoWidth()
+				[ SNew(STextBlock).Text(RoleLabel).Font(FCoreStyle::GetDefaultFontStyle("Bold", 10)) ]
+				+ SHorizontalBox::Slot().FillWidth(1.0f).HAlign(HAlign_Right)
+				[ SNew(STextBlock).Text(FText::FromString(Message.Timestamp.ToString(TEXT("%H:%M"))))
 					.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
-					.ColorAndOpacity(FSlateColor(FLinearColor::Gray))
-				]
+					.ColorAndOpacity(FSlateColor(FLinearColor::Gray)) ]
 			]
-
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			.Padding(0, 4, 0, 0)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(Message.Content))
-				.AutoWrapText(true)
-			]
+			[ SNew(STextBlock).Text(FText::FromString(Message.Content)).AutoWrapText(true) ]
 		]
 	];
 
-	// Scroll to bottom
-	if (ChatScrollBox.IsValid())
-	{
-		ChatScrollBox->ScrollToEnd();
-	}
+	if (ChatScrollBox.IsValid()) ChatScrollBox->ScrollToEnd();
 }
 
 void SFonixFlowTrackerAIChatPanel::AddThinkingIndicator()
 {
 	if (!ChatMessagesBox.IsValid()) return;
-
 	RemoveThinkingIndicator();
 
 	ChatMessagesBox->AddSlot()
@@ -223,10 +259,7 @@ void SFonixFlowTrackerAIChatPanel::AddThinkingIndicator()
 		]
 	];
 
-	if (ChatScrollBox.IsValid())
-	{
-		ChatScrollBox->ScrollToEnd();
-	}
+	if (ChatScrollBox.IsValid()) ChatScrollBox->ScrollToEnd();
 }
 
 void SFonixFlowTrackerAIChatPanel::RemoveThinkingIndicator()
@@ -259,49 +292,14 @@ FString SFonixFlowTrackerAIChatPanel::BuildSystemPrompt() const
 	);
 }
 
-FString SFonixFlowTrackerAIChatPanel::GetAPIKey() const
-{
-	// Read from config or environment
-	FString APIKey;
-	GConfig->GetString(TEXT("FonixFlowTrackerSetup"), TEXT("AIAPIKey"), APIKey, GGameIni);
-	if (APIKey.IsEmpty())
-	{
-		APIKey = FPlatformMisc::GetEnvironmentVariable(TEXT("TRACKING_AI_API_KEY"));
-	}
-	return APIKey;
-}
-
-FString SFonixFlowTrackerAIChatPanel::GetAPIEndpoint() const
-{
-	FString Endpoint;
-	GConfig->GetString(TEXT("FonixFlowTrackerSetup"), TEXT("AIEndpoint"), Endpoint, GGameIni);
-	if (Endpoint.IsEmpty())
-	{
-		// Default to OpenRouter
-		Endpoint = TEXT("https://openrouter.ai/api/v1/chat/completions");
-	}
-	return Endpoint;
-}
-
-FString SFonixFlowTrackerAIChatPanel::GetModel() const
-{
-	FString Model;
-	GConfig->GetString(TEXT("FonixFlowTrackerSetup"), TEXT("AIModel"), Model, GGameIni);
-	if (Model.IsEmpty())
-	{
-		Model = TEXT("anthropic/claude-sonnet-4");
-	}
-	return Model;
-}
-
 void SFonixFlowTrackerAIChatPanel::CallAIAPI(const FString& UserMessage)
 {
-	FString APIKey = GetAPIKey();
-	if (APIKey.IsEmpty())
+	const UFonixFlowTrackerSettings* Settings = UFonixFlowTrackerSettings::Get();
+	if (!Settings || Settings->AIAPIKey.IsEmpty())
 	{
 		FChatMessage ErrorMsg;
 		ErrorMsg.Role = TEXT("assistant");
-		ErrorMsg.Content = TEXT("API key not configured. Set TRACKING_AI_API_KEY environment variable or add AIAPIKey to your project config under [FonixFlowTrackerSetup].");
+		ErrorMsg.Content = TEXT("API key not configured. Go to Edit > Project Settings > Plugins > FonixFlow Tracker Setup");
 		ErrorMsg.Timestamp = FDateTime::Now();
 		Messages.Add(ErrorMsg);
 		AddMessageToChat(ErrorMsg);
@@ -311,22 +309,19 @@ void SFonixFlowTrackerAIChatPanel::CallAIAPI(const FString& UserMessage)
 	bIsWaitingForResponse = true;
 	AddThinkingIndicator();
 
-	// Build request body
 	FString RequestBody;
 	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&RequestBody);
 
 	Writer->WriteObjectStart();
-	Writer->WriteValue(TEXT("model"), GetModel());
+	Writer->WriteValue(TEXT("model"), Settings->AIModel);
 	Writer->WriteValue(TEXT("max_tokens"), 1024);
 	Writer->WriteArrayStart(TEXT("messages"));
 
-	// System message
 	Writer->WriteObjectStart();
 	Writer->WriteValue(TEXT("role"), TEXT("system"));
 	Writer->WriteValue(TEXT("content"), BuildSystemPrompt());
 	Writer->WriteObjectEnd();
 
-	// Conversation history (last 10 messages)
 	int32 StartIdx = FMath::Max(0, Messages.Num() - 10);
 	for (int32 i = StartIdx; i < Messages.Num(); i++)
 	{
@@ -340,14 +335,13 @@ void SFonixFlowTrackerAIChatPanel::CallAIAPI(const FString& UserMessage)
 	Writer->WriteObjectEnd();
 	Writer->Close();
 
-	// Create HTTP request
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> HttpRequest = FHttpModule::Get().CreateRequest();
-	HttpRequest->SetURL(GetAPIEndpoint());
+	HttpRequest->SetURL(Settings->AIEndpoint);
 	HttpRequest->SetVerb(TEXT("POST"));
 	HttpRequest->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
-	HttpRequest->SetHeader(TEXT("Authorization"), FString::Printf(TEXT("Bearer %s"), *APIKey));
+	HttpRequest->SetHeader(TEXT("Authorization"), FString::Printf(TEXT("Bearer %s"), *Settings->AIAPIKey));
 	HttpRequest->SetHeader(TEXT("HTTP-Referer"), TEXT("https://github.com/lcevelik/fonixflow-tracker-setup"));
-	HttpRequest->SetHeader(TEXT("X-Title"), TEXT("UE FonixFlow Tracker Setup"));
+	HttpRequest->SetHeader(TEXT("X-Title"), TEXT("FonixFlow Tracker Setup"));
 	HttpRequest->SetContentAsString(RequestBody);
 	HttpRequest->OnProcessRequestComplete().BindRaw(this, &SFonixFlowTrackerAIChatPanel::OnAPIResponse);
 	HttpRequest->ProcessRequest();
@@ -381,7 +375,6 @@ void SFonixFlowTrackerAIChatPanel::OnAPIResponse(FHttpRequestPtr Request, FHttpR
 		return;
 	}
 
-	// Parse JSON response
 	TSharedPtr<FJsonObject> JsonObject;
 	TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(ResponseBody);
 

@@ -19,7 +19,8 @@ public class FonixFlowTrackerSetup : ModuleRules
 			"LiveLinkCamera",
 			"CameraCalibrationCore",
 			"LensComponent",
-			"VirtualCameraCore"
+			"VirtualCameraCore",
+			"DeveloperSettings"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]
