@@ -224,27 +224,76 @@ FGuid UFonixFlowTrackerSetupSubsystem::CreateLiveLinkSource(const FTrackingConne
 	{
 	case ETrackingProtocol::FreeD:
 	{
-		// Configure for FreeD protocol
-		UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Configuring FreeD source at %s:%d"), *Settings.IPAddress, Settings.FreeDPort);
-		// Note: FreeD source creation requires LiveLinkFreeD plugin to be enabled
-		// The source will be created when the user opens Live Link and adds it manually
-		// or through the preset system
+		// Find the FreeD connection settings struct via reflection (avoids private header dependency)
+		UScriptStruct* FreeDSettingsStruct = nullptr;
+		for (TObjectIterator<UScriptStruct> It; It; ++It)
+		{
+			if (It->GetName() == TEXT("LiveLinkFreeDConnectionSettings"))
+			{
+				FreeDSettingsStruct = *It;
+				break;
+			}
+		}
+
+		// Find the FreeD source factory
+		ULiveLinkSourceFactory* FreeDFactory = nullptr;
+		for (TObjectIterator<ULiveLinkSourceFactory> It; It; ++It)
+		{
+			if (It->GetSourceDisplayName().ToString().Contains(TEXT("FreeD")))
+			{
+				FreeDFactory = *It;
+				break;
+			}
+		}
+
+		if (FreeDFactory && FreeDSettingsStruct)
+		{
+			TArray<uint8> SettingsMemory;
+			SettingsMemory.SetNumZeroed(FreeDSettingsStruct->GetStructureSize());
+			FreeDSettingsStruct->InitializeDefaultValue(SettingsMemory.GetData());
+
+			FStrProperty* IPProp = CastField<FStrProperty>(FreeDSettingsStruct->FindPropertyByName(FName("IPAddress")));
+			FUInt16Property* PortProp = CastField<FUInt16Property>(FreeDSettingsStruct->FindPropertyByName(FName("UDPPortNumber")));
+
+			if (IPProp) IPProp->SetPropertyValue_InContainer(SettingsMemory.GetData(), TEXT("0.0.0.0"));
+			if (PortProp) PortProp->SetPropertyValue_InContainer(SettingsMemory.GetData(), static_cast<uint16>(Settings.FreeDPort));
+
+			FString ConnectionString;
+			FreeDSettingsStruct->ExportText(ConnectionString, SettingsMemory.GetData(), nullptr, nullptr, PPF_None, nullptr);
+
+			TSharedPtr<ILiveLinkSource> Source = FreeDFactory->CreateSource(ConnectionString);
+			if (Source.IsValid())
+			{
+				SourceGuid = LiveLinkClient->AddSource(Source);
+				UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: FreeD source created — GUID: %s, port: %d"),
+					*SourceGuid.ToString(), Settings.FreeDPort);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("FonixFlowTrackerSetup: FreeD factory returned null source"));
+			}
+
+			FreeDSettingsStruct->DestroyStruct(SettingsMemory.GetData());
+		}
+		else
+		{
+			if (!FreeDFactory)
+				UE_LOG(LogTemp, Error, TEXT("FonixFlowTrackerSetup: LiveLinkFreeD factory not found — ensure LiveLinkFreeD plugin is enabled"));
+			if (!FreeDSettingsStruct)
+				UE_LOG(LogTemp, Error, TEXT("FonixFlowTrackerSetup: FLiveLinkFreeDConnectionSettings struct not found"));
+		}
 		break;
 	}
 
 	case ETrackingProtocol::OpenTrackIO:
-	{
-		UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Configuring OpenTrack source #%d"), Settings.OpenTrackSourceNumber);
+		UE_LOG(LogTemp, Warning, TEXT("FonixFlowTrackerSetup: OpenTrack IO not yet implemented"));
 		break;
-	}
 
 	default:
 		UE_LOG(LogTemp, Warning, TEXT("FonixFlowTrackerSetup: Unsupported protocol"));
-		return SourceGuid;
+		break;
 	}
 
-	// Store settings for reference
-	UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: LiveLink source configuration prepared for %s"), *Settings.SubjectName);
 	return SourceGuid;
 }
 
@@ -338,6 +387,7 @@ void UFonixFlowTrackerSetupSubsystem::ConfigureLiveLinkComponent(
 	SubjectKey.SubjectName = FName(*SubjectName);
 
 	LLController->SubjectRepresentation.Role = ULiveLinkCameraRole::StaticClass();
+	LLController->SubjectRepresentation.Subject = FName(*SubjectName);
 
 	UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Configured LiveLink component for subject '%s'"), *SubjectName);
 }
@@ -349,4 +399,4 @@ void UFonixFlowTrackerSetupSubsystem::ConfigureVirtualCamera(ACineCameraActor* C
 	UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Virtual camera integration configured"));
 }
 
-#undef LOCTEXT_NAMESPACEENDOFFILE
+#undef LOCTEXT_NAMESPACE

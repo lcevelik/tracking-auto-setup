@@ -802,7 +802,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildLogSection()
 		.BorderImage(FAppStyle::GetBrush("ToolPanel.DarkGroupBorder"))
 		.Padding(8)
 		[
-			SNew(SScrollBox)
+			SAssignNew(LogScrollBox, SScrollBox)
 			+ SScrollBox::Slot()
 			[
 				SNew(STextBlock)
@@ -840,6 +840,10 @@ void SFonixFlowTrackerSetupPanel::AddLog(const FString& Message)
 {
 	FString Timestamp = FDateTime::Now().ToString(TEXT("%H:%M:%S"));
 	SetupLog.Add(FString::Printf(TEXT("[%s] %s"), *Timestamp, *Message));
+	if (LogScrollBox.IsValid())
+	{
+		LogScrollBox->ScrollToEnd();
+	}
 }
 
 // ── LiveLink Polling ────────────────────────────────────────────────
@@ -919,6 +923,15 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 	StopLiveLinkPolling();
 
 	AddLog(TEXT("=== Starting Setup ==="));
+
+	// Verify protocol
+	if (SelectedProtocol != ETrackingProtocol::FreeD)
+	{
+		AddLog(TEXT("ERROR: Only FreeD protocol is currently supported. OpenTrack IO is coming soon."));
+		bSetupRunning = false;
+		bSetupComplete = true;
+		return;
+	}
 
 	// Verify camera selection
 	if (!SelectedCamera || !SelectedCamera->IsValidLowLevel())
@@ -1240,7 +1253,7 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 			UScriptStruct* EncoderDataStruct = nullptr;
 			for (TObjectIterator<UScriptStruct> It; It; ++It)
 			{
-				if (It->GetName() == TEXT("FreeDEncoderData"))
+				if (It->GetName() == TEXT("LiveLinkFreeDEncoderData"))
 				{
 					EncoderDataStruct = *It;
 					break;
@@ -1383,7 +1396,7 @@ bool SFonixFlowTrackerSetupPanel::IsCalibrationReady() const
 
 bool SFonixFlowTrackerSetupPanel::IsSetupButtonEnabled() const
 {
-	return !bSetupRunning && SelectedCamera != nullptr;
+	return !bSetupRunning && SelectedCamera != nullptr && SelectedCamera->IsValidLowLevel();
 }
 
 #undef LOCTEXT_NAMESPACE

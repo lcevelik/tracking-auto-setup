@@ -52,7 +52,7 @@ ULensFile* ULensSetupUtility::CreateLensFile(const FLensConfiguration& Config)
 		FString PackageName = FString::Printf(TEXT("/Game/FonixFlowTrackerSetup/%s"), *Config.LensFileName);
 		UPackage* Package = CreatePackage(*PackageName);
 
-		LensFile = NewObject<ULensFile>(Package, FName(*Config.LensFileName), RF_Public | RF_Standalone | RF_MarkAsNative);
+		LensFile = NewObject<ULensFile>(Package, FName(*Config.LensFileName), RF_Public | RF_Standalone);
 
 		if (LensFile)
 		{
@@ -63,8 +63,8 @@ ULensFile* ULensSetupUtility::CreateLensFile(const FLensConfiguration& Config)
 			LensFile->LensInfo.ImageDimensions = Config.ImageDimensions;
 			LensFile->LensInfo.SqueezeFactor = Config.SqueezeFactor;
 
-			// Set data mode to Parameters (not STMap)
-			LensFile->DataMode = ELensDataMode::Parameters;
+			// Set data mode to Geometric (not STMap)
+			LensFile->DataMode = ELensDataMode::Geometric;
 
 			// Populate tables
 			PopulateEncoderTable(LensFile, Config);
@@ -96,7 +96,9 @@ void ULensSetupUtility::PopulateEncoderTable(ULensFile* LensFile, const FLensCon
 	if (!LensFile) return;
 
 	// Clear existing encoder data
-	LensFile->EncodersTable.ClearAll();
+	LensFile->EncodersTable.Focus.Reset();
+	LensFile->EncodersTable.Iris.Reset();
+	LensFile->EncodersTable.Zoom.Reset();
 
 	// Populate focus encoder mapping
 	// Maps raw encoder values (0 to MaxRaw) to physical focus distance (in cm)
@@ -134,8 +136,8 @@ void ULensSetupUtility::PopulateEncoderTable(ULensFile* LensFile, const FLensCon
 		// Physical focal length in mm
 		float PhysicalValue = FMath::Lerp(Config.FocalLengthMinMM, Config.FocalLengthMaxMM, Alpha);
 
-		// Add key to the iris encoder curve (used for zoom in FreeD)
-		FKeyHandle KeyHandle = LensFile->EncodersTable.Iris.AddKey(RawValue, PhysicalValue);
+		// Add key to the zoom encoder curve
+		FKeyHandle KeyHandle = LensFile->EncodersTable.Zoom.AddKey(RawValue, PhysicalValue);
 
 		UE_LOG(LogTemp, Verbose, TEXT("FonixFlowTrackerSetup: Zoom encoder point %d: raw=%.0f -> physical=%.1f mm"),
 			i, RawValue, PhysicalValue);
@@ -181,9 +183,6 @@ void ULensSetupUtility::PopulateFocalLengthTable(ULensFile* LensFile, const FLen
 			i, FocusValue, ZoomValue, Fx, Fy);
 	}
 
-	// Build focus curves from the added points
-	LensFile->FocalLengthTable.BuildFocusCurves();
-
 	UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Populated focal length table with %d points"), NumPoints);
 }
 
@@ -213,7 +212,6 @@ void ULensSetupUtility::ConfigureCineCamera(UCineCameraComponent* Camera, const 
 	// Set filmback settings
 	Camera->Filmback.SensorWidth = Config.SensorWidthMM;
 	Camera->Filmback.SensorHeight = Config.SensorHeightMM;
-	Camera->Filmback.SensorAspectRatio = Config.SensorAspectRatio;
 
 	// Set lens settings
 	Camera->LensSettings.MinFocalLength = Config.FocalLengthMinMM;

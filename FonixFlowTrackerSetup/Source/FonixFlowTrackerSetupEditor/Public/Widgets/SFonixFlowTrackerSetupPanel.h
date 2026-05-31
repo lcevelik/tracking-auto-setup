@@ -10,6 +10,7 @@
 
 class ACineCameraActor;
 class ULensFile;
+class SScrollBox;
 
 /**
  * Unified setup panel for FonixFlow Tracker Setup.
@@ -74,6 +75,9 @@ private:
 	TSharedPtr<SBox> PrimeLensInputBox;
 	TSharedPtr<SBox> ZoomLensInputBox;
 	TSharedPtr<SBox> ZoomCalibrationBox;
+
+	// Log scroll box for auto-scroll to bottom
+	TSharedPtr<SScrollBox> LogScrollBox;
 
 	// UI Build
 	TSharedRef<SWidget> BuildHeader();
