@@ -9,6 +9,9 @@
 #include "CineCameraComponent.h"
 #include "CineCameraActor.h"
 #include "LensComponent.h"
+#include "LiveLinkComponentController.h"
+#include "LiveLinkCameraController.h"
+#include "Roles/LiveLinkCameraRole.h"
 #include "Engine/AssetManager.h"
 #include "Engine/ObjectLibrary.h"
 #include "UObject/SavePackage.h"
@@ -220,19 +223,25 @@ ULensFile* ULensSetupUtility::ApplyLensConfiguration(ACineCameraActor* Camera, c
 	// Configure CineCameraComponent
 	ConfigureCineCamera(CineCamera, Config);
 
-	// Find or add LensComponent
-	ULensComponent* LensComp = Camera->FindComponentByClass<ULensComponent>();
-	if (!LensComp)
+	// Set lens file on the LiveLink camera controller (FIZ encoder → physical cm mapping)
+	ULiveLinkComponentController* LLComp = Camera->FindComponentByClass<ULiveLinkComponentController>();
+	if (LLComp && LLComp->ControllerMap.Contains(ULiveLinkCameraRole::StaticClass()))
 	{
-		Camera->Modify(); // Mark actor dirty before adding component so editor tracks the change
-		LensComp = NewObject<ULensComponent>(Camera, TEXT("LensComponent"), RF_Transactional);
-		LensComp->RegisterComponent();
-		Camera->AddInstanceComponent(LensComp);
+		ULiveLinkCameraController* CamCtrl = Cast<ULiveLinkCameraController>(
+			LLComp->ControllerMap[ULiveLinkCameraRole::StaticClass()]);
+		if (CamCtrl)
+		{
+			CamCtrl->LensFilePicker.bUseDefaultLensFile = false;
+			CamCtrl->LensFilePicker.LensFile = LensFile;
+			CamCtrl->Modify();
+			UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Lens file '%s' set on LiveLink camera controller"),
+				*LensFile->GetName());
+		}
 	}
-
-	// Configure LensComponent
-	ConfigureLensComponent(LensComp, LensFile, true);
-	LensComp->MarkPackageDirty();
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("FonixFlowTrackerSetup: No LiveLink camera controller found — run Setup Now first"));
+	}
 
 	return LensFile;
 }

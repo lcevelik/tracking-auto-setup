@@ -41,6 +41,8 @@ private:
 	// Lens type
 	bool bUsePrimeLens = false;
 	float PrimeLensFocalLengthMM = 50.0f;
+	float FocalLengthMinMM = 28.0f;
+	float FocalLengthMaxMM = 100.0f;
 
 	// LiveLink polling — actual values from FreeD (physical cm/mm when source is calibrated)
 	float LiveLinkFocusValue = 0.0f;

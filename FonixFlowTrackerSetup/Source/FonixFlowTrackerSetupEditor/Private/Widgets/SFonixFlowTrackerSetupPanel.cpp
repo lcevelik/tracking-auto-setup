@@ -36,6 +36,7 @@
 #include "SocketSubsystem.h"
 #include "Interfaces/IPv4/IPv4Address.h"
 #include "TimerManager.h"
+#include "LiveLinkFreeDSourceSettings.h"
 
 #define LOCTEXT_NAMESPACE "SFonixFlowTrackerSetupPanel"
 
@@ -374,13 +375,35 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildLensTypeSection()
 		]
 	]
 
-	// Zoom lens range inputs (focal length range removed — no zoom encoder calibration)
+	// Zoom lens range inputs
 	+ SVerticalBox::Slot().AutoHeight().Padding(24, 0, 0, 4)
 	[
 		SAssignNew(ZoomLensInputBox, SBox)
 		.Visibility(!bUsePrimeLens ? EVisibility::Visible : EVisibility::Collapsed)
 		[
-			SNew(SBox)
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0, 0, 8, 0)
+			[ SNew(STextBlock).Text(LOCTEXT("ZoomMin", "Min Focal Length (mm):")).Font(FCoreStyle::GetDefaultFontStyle("Regular", 10)) ]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				SNew(SSpinBox<float>)
+				.MinValue(8.0f)
+				.MaxValue(300.0f)
+				.Value(FocalLengthMinMM)
+				.OnValueChanged_Lambda([this](float Val) { FocalLengthMinMM = Val; })
+				.MinDesiredWidth(80)
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(16, 0, 8, 0)
+			[ SNew(STextBlock).Text(LOCTEXT("ZoomMax", "Max Focal Length (mm):")).Font(FCoreStyle::GetDefaultFontStyle("Regular", 10)) ]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				SNew(SSpinBox<float>)
+				.MinValue(8.0f)
+				.MaxValue(300.0f)
+				.Value(FocalLengthMaxMM)
+				.OnValueChanged_Lambda([this](float Val) { FocalLengthMaxMM = Val; })
+				.MinDesiredWidth(80)
+			]
 		]
 	];
 }
@@ -766,8 +789,32 @@ void SFonixFlowTrackerSetupPanel::PollLiveLinkData()
 			FLiveLinkCameraFrameData* CameraFrame = FrameData.FrameData.Cast<FLiveLinkCameraFrameData>();
 			if (CameraFrame)
 			{
-				// Read physical focus value directly — user's 3D system sends physical cm
-				LiveLinkFocusValue = CameraFrame->FocusDistance;
+				// FreeD normalizes the raw encoder to 0.0–1.0 in FocusDistance.
+				// Reconstruct physical cm: physical = min + normalized * (max - min)
+				// where min/max come from the FreeD source encoder auto-range.
+				float PhysicalMin = 0.0f, PhysicalMax = 0.0f;
+				ULiveLinkFreeDSourceSettings* FreeDSettings = nullptr;
+				if (ActiveSourceGuid.IsValid())
+				{
+					FreeDSettings = Cast<ULiveLinkFreeDSourceSettings>(LiveLinkClient->GetSourceSettings(ActiveSourceGuid));
+				}
+				if (!FreeDSettings)
+				{
+					for (const FGuid& SrcGuid : LiveLinkClient->GetSources())
+					{
+						FreeDSettings = Cast<ULiveLinkFreeDSourceSettings>(LiveLinkClient->GetSourceSettings(SrcGuid));
+						if (FreeDSettings) break;
+					}
+				}
+				if (FreeDSettings)
+				{
+					PhysicalMin = (float)FreeDSettings->FocusDistanceEncoderData.Min;
+					PhysicalMax = (float)FreeDSettings->FocusDistanceEncoderData.Max;
+				}
+				const float Delta = PhysicalMax - PhysicalMin;
+				LiveLinkFocusValue = (Delta > 0.0f)
+					? PhysicalMin + CameraFrame->FocusDistance * Delta
+					: CameraFrame->FocusDistance;
 			}
 		}
 
