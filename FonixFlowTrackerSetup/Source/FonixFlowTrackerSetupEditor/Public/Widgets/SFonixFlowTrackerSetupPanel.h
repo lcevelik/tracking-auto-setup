@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/Views/SListView.h"
+#include "Widgets/Layout/SWidgetSwitcher.h"
 #include "FonixFlowTrackerSetupTypes.h"
 #include "LensSetupTypes.h"
 
@@ -80,8 +81,19 @@ private:
 	// Log scroll box for auto-scroll to bottom
 	TSharedPtr<SScrollBox> LogScrollBox;
 
+	// Tab state: 0 = Camera Setup, 1 = Calibration, 2 = Log
+	int32 ActiveTab = 0;
+	TSharedPtr<SWidgetSwitcher> TabSwitcher;
+	TSharedPtr<SButton> TabBtnCamera;
+	TSharedPtr<SButton> TabBtnCalibration;
+	TSharedPtr<SButton> TabBtnLog;
+
 	// UI Build
 	TSharedRef<SWidget> BuildHeader();
+	TSharedRef<SWidget> BuildTabBar();
+	TSharedRef<SWidget> BuildCameraSetupTab();
+	TSharedRef<SWidget> BuildCalibrationTab();
+	TSharedRef<SWidget> BuildLogTab();
 	TSharedRef<SWidget> BuildProtocolSection();
 	TSharedRef<SWidget> BuildNetworkSection();
 	TSharedRef<SWidget> BuildCameraSection();
@@ -90,6 +102,8 @@ private:
 	TSharedRef<SWidget> BuildCalibrationSection();
 	TSharedRef<SWidget> BuildStatusSection();
 	TSharedRef<SWidget> BuildLogSection();
+
+	void SwitchTab(int32 TabIndex);
 
 	// Actions
 	void RefreshCameraList();
