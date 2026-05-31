@@ -277,6 +277,7 @@ ULensFile* ULensSetupUtility::ApplyLensConfiguration(ACineCameraActor* Camera, c
 	ULensComponent* LensComp = Camera->FindComponentByClass<ULensComponent>();
 	if (!LensComp)
 	{
+		Camera->Modify(); // Mark actor dirty before adding component so editor tracks the change
 		LensComp = NewObject<ULensComponent>(Camera, TEXT("LensComponent"));
 		LensComp->RegisterComponent();
 		Camera->AddInstanceComponent(LensComp);
@@ -284,6 +285,7 @@ ULensFile* ULensSetupUtility::ApplyLensConfiguration(ACineCameraActor* Camera, c
 
 	// Configure LensComponent
 	ConfigureLensComponent(LensComp, LensFile, true);
+	LensComp->MarkPackageDirty();
 
 	return LensFile;
 }

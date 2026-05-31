@@ -48,11 +48,11 @@ private:
 	bool bLiveLinkPollingActive = false;
 	FTimerHandle LiveLinkPollTimerHandle;
 
-	// Calibration — captured raw encoder values
-	int32 FocusEncoderMin = 0;
-	int32 FocusEncoderMax = 0x00FFFFFF;
-	int32 ZoomEncoderMin = 0;
-	int32 ZoomEncoderMax = 0x00FFFFFF;
+	// Calibration — captured physical values (focus in cm, focal length in mm) direct from LiveLink
+	float FocusEncoderMin = 0.0f;
+	float FocusEncoderMax = 0.0f;
+	float ZoomEncoderMin = 0.0f;
+	float ZoomEncoderMax = 0.0f;
 	bool bFocusMinCaptured = false;
 	bool bFocusMaxCaptured = false;
 	bool bZoomMinCaptured = false;
@@ -70,6 +70,9 @@ private:
 
 	// Source GUID for cleanup
 	FGuid ActiveSourceGuid;
+
+	// Whether the LiveLink subject has been auto-assigned to the controller
+	bool bSubjectAutoAssigned = false;
 
 	// Lens type SBox references for visibility control
 	TSharedPtr<SBox> PrimeLensInputBox;

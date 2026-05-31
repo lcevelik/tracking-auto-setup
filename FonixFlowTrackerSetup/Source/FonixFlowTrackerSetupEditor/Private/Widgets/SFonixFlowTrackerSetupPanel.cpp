@@ -880,9 +880,23 @@ void SFonixFlowTrackerSetupPanel::PollLiveLinkData()
 			FLiveLinkCameraFrameData* CameraFrame = FrameData.FrameData.Cast<FLiveLinkCameraFrameData>();
 			if (CameraFrame)
 			{
-				// FocusDistance and FocalLength from FreeD are 0-1 normalized
+				// Read physical values directly — FreeD sends physical focus (cm) and focal length (mm)
 				LiveLinkFocusValue = CameraFrame->FocusDistance;
 				LiveLinkZoomValue = CameraFrame->FocalLength;
+			}
+		}
+
+		// Auto-assign subject to the LiveLink controller on the selected camera
+		if (!bSubjectAutoAssigned && SelectedCamera && SelectedCamera->IsValidLowLevel())
+		{
+			ULiveLinkComponentController* LLController =
+				SelectedCamera->FindComponentByClass<ULiveLinkComponentController>();
+			if (LLController)
+			{
+				LLController->SubjectRepresentation.Subject = SubjectKey.SubjectName;
+				bSubjectAutoAssigned = true;
+				AddLog(FString::Printf(TEXT("LiveLink subject auto-assigned: '%s'"),
+					*SubjectKey.SubjectName.ToString()));
 			}
 		}
 		break; // Use first camera subject found
@@ -1051,6 +1065,7 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 			{
 				SourceGuid = LiveLinkClient->AddSource(Source);
 				ActiveSourceGuid = SourceGuid;
+				bSubjectAutoAssigned = false; // Reset so PollLiveLinkData will auto-assign once subjects appear
 				AddLog(FString::Printf(TEXT("  Source created — GUID: %s"), *SourceGuid.ToString()));
 				AddLog(FString::Printf(TEXT("  Listening on 0.0.0.0:%d"), ListeningPort));
 
@@ -1124,35 +1139,32 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 
 void SFonixFlowTrackerSetupPanel::CaptureFocusMin()
 {
-	// Convert normalized 0-1 value to 24-bit raw encoder range
-	int32 RawValue = FMath::RoundToInt(LiveLinkFocusValue * (float)0x00FFFFFF);
-	FocusEncoderMin = RawValue;
+	// Store the physical value directly from LiveLink (cm for focus distance)
+	FocusEncoderMin = LiveLinkFocusValue;
 	bFocusMinCaptured = true;
-	AddLog(FString::Printf(TEXT("Focus MIN captured: %d (LiveLink: %.4f)"), FocusEncoderMin, LiveLinkFocusValue));
+	AddLog(FString::Printf(TEXT("Focus MIN captured: %.2f cm"), FocusEncoderMin));
 }
 
 void SFonixFlowTrackerSetupPanel::CaptureFocusMax()
 {
-	int32 RawValue = FMath::RoundToInt(LiveLinkFocusValue * (float)0x00FFFFFF);
-	FocusEncoderMax = RawValue;
+	FocusEncoderMax = LiveLinkFocusValue;
 	bFocusMaxCaptured = true;
-	AddLog(FString::Printf(TEXT("Focus MAX captured: %d (LiveLink: %.4f)"), FocusEncoderMax, LiveLinkFocusValue));
+	AddLog(FString::Printf(TEXT("Focus MAX captured: %.2f cm"), FocusEncoderMax));
 }
 
 void SFonixFlowTrackerSetupPanel::CaptureZoomMin()
 {
-	int32 RawValue = FMath::RoundToInt(LiveLinkZoomValue * (float)0x00FFFFFF);
-	ZoomEncoderMin = RawValue;
+	// Store the physical value directly from LiveLink (mm for focal length)
+	ZoomEncoderMin = LiveLinkZoomValue;
 	bZoomMinCaptured = true;
-	AddLog(FString::Printf(TEXT("Zoom MIN captured: %d (LiveLink: %.4f)"), ZoomEncoderMin, LiveLinkZoomValue));
+	AddLog(FString::Printf(TEXT("Zoom MIN captured: %.2f mm"), ZoomEncoderMin));
 }
 
 void SFonixFlowTrackerSetupPanel::CaptureZoomMax()
 {
-	int32 RawValue = FMath::RoundToInt(LiveLinkZoomValue * (float)0x00FFFFFF);
-	ZoomEncoderMax = RawValue;
+	ZoomEncoderMax = LiveLinkZoomValue;
 	bZoomMaxCaptured = true;
-	AddLog(FString::Printf(TEXT("Zoom MAX captured: %d (LiveLink: %.4f)"), ZoomEncoderMax, LiveLinkZoomValue));
+	AddLog(FString::Printf(TEXT("Zoom MAX captured: %.2f mm"), ZoomEncoderMax));
 }
 
 // ── Apply Calibration ───────────────────────────────────────────────
@@ -1174,12 +1186,13 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 	LensConfig.bCreateNewLensFile = true;
 	LensConfig.LensFileName = TEXT("TrackedLens");
 
-	// Focus encoder mapping
-	LensConfig.FocusEncoderRange.RawMin = FocusEncoderMin;
-	LensConfig.FocusEncoderRange.RawMax = FocusEncoderMax;
+	// Focus encoder mapping — captured values ARE physical (cm), so use them as both raw and physical range
+	LensConfig.FocusEncoderRange.RawMin = FMath::RoundToInt(FocusEncoderMin);
+	LensConfig.FocusEncoderRange.RawMax = FMath::RoundToInt(FocusEncoderMax);
 	LensConfig.FocusEncoderRange.bIsCalibrated = true;
-	LensConfig.FocusDistanceMinCM = FocusDistanceMinCM;
-	LensConfig.FocusDistanceMaxCM = FocusDistanceMaxCM;
+	// Physical range comes from captured values (what LiveLink reported at each stop)
+	LensConfig.FocusDistanceMinCM = FocusEncoderMin;
+	LensConfig.FocusDistanceMaxCM = FocusEncoderMax;
 
 	if (bUsePrimeLens)
 	{
@@ -1193,13 +1206,13 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 	}
 	else
 	{
-		// Zoom: variable focal length with encoder mapping
-		LensConfig.FocalLengthMinMM = FocalLengthMinMM;
-		LensConfig.FocalLengthMaxMM = FocalLengthMaxMM;
-		LensConfig.ZoomEncoderRange.RawMin = ZoomEncoderMin;
-		LensConfig.ZoomEncoderRange.RawMax = ZoomEncoderMax;
+		// Zoom: captured values are physical focal lengths (mm)
+		LensConfig.FocalLengthMinMM = ZoomEncoderMin;
+		LensConfig.FocalLengthMaxMM = ZoomEncoderMax;
+		LensConfig.ZoomEncoderRange.RawMin = FMath::RoundToInt(ZoomEncoderMin);
+		LensConfig.ZoomEncoderRange.RawMax = FMath::RoundToInt(ZoomEncoderMax);
 		LensConfig.ZoomEncoderRange.bIsCalibrated = true;
-		AddLog(FString::Printf(TEXT("Zoom lens: %.0f - %.0f mm"), FocalLengthMinMM, FocalLengthMaxMM));
+		AddLog(FString::Printf(TEXT("Zoom lens: %.1f - %.1f mm (from captured)"), ZoomEncoderMin, ZoomEncoderMax));
 	}
 
 	AddLog(FString::Printf(TEXT("Focus encoder: %d -> %d (maps to %.0f-%.0f cm)"),
@@ -1337,22 +1350,30 @@ FText SFonixFlowTrackerSetupPanel::GetIPAddressText() const { return FText::From
 
 FText SFonixFlowTrackerSetupPanel::GetFocusMinText() const
 {
-	return bFocusMinCaptured ? FText::Format(LOCTEXT("FocusMinFmt", "Min: {0}"), FText::AsNumber(FocusEncoderMin)) : LOCTEXT("FocusMinUncaptured", "Min: not captured");
+	return bFocusMinCaptured
+		? FText::Format(LOCTEXT("FocusMinFmt", "Min: {0} cm"), FText::AsNumber(FocusEncoderMin))
+		: LOCTEXT("FocusMinUncaptured", "Min: not captured");
 }
 
 FText SFonixFlowTrackerSetupPanel::GetFocusMaxText() const
 {
-	return bFocusMaxCaptured ? FText::Format(LOCTEXT("FocusMaxFmt", "Max: {0}"), FText::AsNumber(FocusEncoderMax)) : LOCTEXT("FocusMaxUncaptured", "Max: not captured");
+	return bFocusMaxCaptured
+		? FText::Format(LOCTEXT("FocusMaxFmt", "Max: {0} cm"), FText::AsNumber(FocusEncoderMax))
+		: LOCTEXT("FocusMaxUncaptured", "Max: not captured");
 }
 
 FText SFonixFlowTrackerSetupPanel::GetZoomMinText() const
 {
-	return bZoomMinCaptured ? FText::Format(LOCTEXT("ZoomMinFmt", "Min: {0}"), FText::AsNumber(ZoomEncoderMin)) : LOCTEXT("ZoomMinUncaptured", "Min: not captured");
+	return bZoomMinCaptured
+		? FText::Format(LOCTEXT("ZoomMinFmt", "Min: {0} mm"), FText::AsNumber(ZoomEncoderMin))
+		: LOCTEXT("ZoomMinUncaptured", "Min: not captured");
 }
 
 FText SFonixFlowTrackerSetupPanel::GetZoomMaxText() const
 {
-	return bZoomMaxCaptured ? FText::Format(LOCTEXT("ZoomMaxFmt", "Max: {0}"), FText::AsNumber(ZoomEncoderMax)) : LOCTEXT("ZoomMaxUncaptured", "Max: not captured");
+	return bZoomMaxCaptured
+		? FText::Format(LOCTEXT("ZoomMaxFmt", "Max: {0} mm"), FText::AsNumber(ZoomEncoderMax))
+		: LOCTEXT("ZoomMaxUncaptured", "Max: not captured");
 }
 
 FText SFonixFlowTrackerSetupPanel::GetSelectedCameraText() const

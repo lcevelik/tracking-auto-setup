@@ -78,7 +78,13 @@ void FFonixFlowTrackerSetupEditorModule::StartupModule()
 void FFonixFlowTrackerSetupEditorModule::ShutdownModule()
 {
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(MainPanelTabId);
-	UToolMenus::UToolMenus::Get()->UnregisterOwnerByName("FonixFlowTrackerSetup");
+
+	// UToolMenus::Get() returns nullptr when the subsystem has already been torn down
+	if (UToolMenus* ToolMenus = UToolMenus::Get())
+	{
+		ToolMenus->UnregisterOwnerByName("FonixFlowTrackerSetup");
+	}
+
 	FFonixFlowTrackerSetupStyle::Shutdown();
 }
 
