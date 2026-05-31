@@ -109,7 +109,7 @@ private:
 	void CaptureZoomWide();
 	void CaptureZoomTele();
 	void ApplyCalibration();
-	void ApplyLensFile();
+
 	void DetectLocalIP();
 	void AddLog(const FString& Message);
 	void PollLiveLinkData();

@@ -21,7 +21,6 @@
 #include "CineCameraActor.h"
 #include "CineCameraComponent.h"
 #include "LensFile.h"
-#include "LensComponent.h"
 #include "LiveLinkComponentController.h"
 #include "LiveLinkCameraController.h"
 #include "Roles/LiveLinkCameraRole.h"
@@ -751,7 +750,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildCalibrationSection()
 				.Text(LOCTEXT("ApplyLensFile", "APPLY LENS FILE"))
 				.HAlign(HAlign_Center)
 				.VAlign(VAlign_Center)
-				.OnClicked_Lambda([this]() -> FReply { ApplyLensFile(); return FReply::Handled(); })
+				.OnClicked_Lambda([this]() -> FReply { ApplyCalibration(); return FReply::Handled(); })
 			]
 		]
 	];
@@ -1263,57 +1262,7 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 	bCalibrationApplied = true;
 }
 
-// ── Apply Lens File ─────────────────────────────────────────────────
 
-void SFonixFlowTrackerSetupPanel::ApplyLensFile()
-{
-	if (!SelectedCamera || !SelectedCamera->IsValidLowLevel())
-	{
-		AddLog(TEXT("ApplyLensFile: No camera selected"));
-		return;
-	}
-
-	ULensFile* LensFile = LoadObject<ULensFile>(nullptr, TEXT("/Game/FonixFlowTrackerSetup/TrackedLens"));
-	if (!LensFile)
-	{
-		AddLog(TEXT("ApplyLensFile: TrackedLens asset not found — run Apply Calibration first"));
-		return;
-	}
-
-	// Apply to LensComponent (create if missing)
-	ULensComponent* LensComp = SelectedCamera->FindComponentByClass<ULensComponent>();
-	if (!LensComp)
-	{
-		LensComp = NewObject<ULensComponent>(SelectedCamera, TEXT("FonixFlowLensComponent"));
-		LensComp->RegisterComponent();
-		SelectedCamera->AddInstanceComponent(LensComp);
-		AddLog(TEXT("ApplyLensFile: LensComponent created"));
-	}
-
-	FLensFilePicker Picker;
-	Picker.bUseDefaultLensFile = false;
-	Picker.LensFile = LensFile;
-	LensComp->SetLensFilePicker(Picker);
-	AddLog(FString::Printf(TEXT("ApplyLensFile: '%s' applied to LensComponent"), *LensFile->GetName()));
-
-	// Apply to LiveLink camera controller if present
-	ULiveLinkComponentController* LLCtrl = SelectedCamera->FindComponentByClass<ULiveLinkComponentController>();
-	if (LLCtrl && LLCtrl->ControllerMap.Contains(ULiveLinkCameraRole::StaticClass()))
-	{
-		ULiveLinkCameraController* CamCtrl = Cast<ULiveLinkCameraController>(
-			LLCtrl->ControllerMap[ULiveLinkCameraRole::StaticClass()]);
-		if (CamCtrl)
-		{
-			CamCtrl->LensFilePicker.bUseDefaultLensFile = false;
-			CamCtrl->LensFilePicker.LensFile = LensFile;
-			CamCtrl->Modify();
-			AddLog(TEXT("ApplyLensFile: Lens file set on LiveLink camera controller"));
-		}
-	}
-
-	AddLog(TEXT("=== Lens File Applied ==="));
-	if (GEditor) GEditor->NoteSelectionChange();
-}
 
 // ═════════════════════════════════════════════════════════════════════
 
