@@ -868,9 +868,11 @@ void SFonixFlowTrackerSetupPanel::PollLiveLinkData()
 					ZoomPhysMax = (float)FreeDSettings->FocalLengthEncoderData.Max;
 				}
 				const float ZoomDelta = ZoomPhysMax - ZoomPhysMin;
-				LiveLinkZoomValue = (ZoomDelta > 0.0f)
+				const float RawZoomMicrons = (ZoomDelta > 0.0f)
 					? ZoomPhysMin + CameraFrame->FocalLength * ZoomDelta
 					: CameraFrame->FocalLength;
+				// FreeD zoom encoder unit is micrometres (µm); convert to mm
+				LiveLinkZoomValue = RawZoomMicrons / 1000.0f;
 			}
 		}
 
