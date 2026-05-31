@@ -374,69 +374,13 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildLensTypeSection()
 		]
 	]
 
-	// Zoom lens range inputs
+	// Zoom lens range inputs (focal length range removed — no zoom encoder calibration)
 	+ SVerticalBox::Slot().AutoHeight().Padding(24, 0, 0, 4)
 	[
 		SAssignNew(ZoomLensInputBox, SBox)
 		.Visibility(!bUsePrimeLens ? EVisibility::Visible : EVisibility::Collapsed)
 		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0, 0, 8, 0)
-			[ SNew(STextBlock).Text(LOCTEXT("ZoomMin", "Min Focal Length (mm):")).Font(FCoreStyle::GetDefaultFontStyle("Regular", 10)) ]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-			[
-				SNew(SSpinBox<float>)
-				.MinValue(8.0f)
-				.MaxValue(300.0f)
-				.Value(FocalLengthMinMM)
-				.OnValueChanged_Lambda([this](float Val) { FocalLengthMinMM = Val; })
-				.MinDesiredWidth(80)
-			]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(16, 0, 8, 0)
-			[ SNew(STextBlock).Text(LOCTEXT("ZoomMax", "Max Focal Length (mm):")).Font(FCoreStyle::GetDefaultFontStyle("Regular", 10)) ]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-			[
-				SNew(SSpinBox<float>)
-				.MinValue(8.0f)
-				.MaxValue(300.0f)
-				.Value(FocalLengthMaxMM)
-				.OnValueChanged_Lambda([this](float Val) { FocalLengthMaxMM = Val; })
-				.MinDesiredWidth(80)
-			]
-		]
-	]
-
-	// Focus distance range
-	+ SVerticalBox::Slot().AutoHeight().Padding(0, 8, 0, 0)
-	[
-		SNew(STextBlock)
-		.Text(LOCTEXT("FocusRangeLabel", "Focus Distance Range (cm)"))
-		.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
-	]
-	+ SVerticalBox::Slot().AutoHeight().Padding(0, 4, 0, 0)
-	[
-		SNew(SHorizontalBox)
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0, 0, 8, 0)
-		[ SNew(STextBlock).Text(LOCTEXT("FocusDistMin", "Near:")).Font(FCoreStyle::GetDefaultFontStyle("Regular", 10)) ]
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-		[
-			SNew(SSpinBox<float>)
-			.MinValue(1.0f)
-			.MaxValue(100000.0f)
-			.Value(FocusDistanceMinCM)
-			.OnValueChanged_Lambda([this](float Val) { FocusDistanceMinCM = Val; })
-			.MinDesiredWidth(80)
-		]
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(16, 0, 8, 0)
-		[ SNew(STextBlock).Text(LOCTEXT("FocusDistMax", "Far:")).Font(FCoreStyle::GetDefaultFontStyle("Regular", 10)) ]
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-		[
-			SNew(SSpinBox<float>)
-			.MinValue(1.0f)
-			.MaxValue(100000.0f)
-			.Value(FocusDistanceMaxCM)
-			.OnValueChanged_Lambda([this](float Val) { FocusDistanceMaxCM = Val; })
-			.MinDesiredWidth(80)
+			SNew(SBox)
 		]
 	];
 }
@@ -864,7 +808,6 @@ void SFonixFlowTrackerSetupPanel::UpdateLensTypeVisibility()
 
 	if (PrimeLensInputBox.IsValid()) PrimeLensInputBox->SetVisibility(PrimeVis);
 	if (ZoomLensInputBox.IsValid()) ZoomLensInputBox->SetVisibility(ZoomVis);
-	if (ZoomCalibrationBox.IsValid()) ZoomCalibrationBox->SetVisibility(ZoomVis);
 }
 
 // ── Setup ───────────────────────────────────────────────────────────
@@ -1051,12 +994,6 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 			CineComp->LensSettings.MinFocalLength = PrimeLensFocalLengthMM;
 			CineComp->LensSettings.MaxFocalLength = PrimeLensFocalLengthMM;
 			AddLog(FString::Printf(TEXT("  Prime lens: %.0f mm"), PrimeLensFocalLengthMM));
-		}
-		else
-		{
-			CineComp->LensSettings.MinFocalLength = FocalLengthMinMM;
-			CineComp->LensSettings.MaxFocalLength = FocalLengthMaxMM;
-			AddLog(FString::Printf(TEXT("  Zoom lens: %.0f - %.0f mm"), FocalLengthMinMM, FocalLengthMaxMM));
 		}
 	}
 
