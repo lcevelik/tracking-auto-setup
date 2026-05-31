@@ -230,8 +230,17 @@ ULensFile* ULensSetupUtility::ApplyLensConfiguration(ACineCameraActor* Camera, c
 
 	// Set lens file on the LiveLink camera controller (FIZ encoder → physical cm mapping)
 	ULiveLinkComponentController* LLComp = Camera->FindComponentByClass<ULiveLinkComponentController>();
-	if (LLComp && LLComp->ControllerMap.Contains(ULiveLinkCameraRole::StaticClass()))
+	if (LLComp)
 	{
+		// Create the camera controller in ControllerMap if it isn't there yet
+		// (can be missing if ApplyCalibration runs before the first editor tick)
+		if (!LLComp->ControllerMap.Contains(ULiveLinkCameraRole::StaticClass()))
+		{
+			ULiveLinkCameraController* NewCtrl = NewObject<ULiveLinkCameraController>(LLComp);
+			NewCtrl->bUseCameraRange = true;
+			LLComp->ControllerMap.Add(ULiveLinkCameraRole::StaticClass(), NewCtrl);
+		}
+
 		ULiveLinkCameraController* CamCtrl = Cast<ULiveLinkCameraController>(
 			LLComp->ControllerMap[ULiveLinkCameraRole::StaticClass()]);
 		if (CamCtrl)

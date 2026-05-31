@@ -987,6 +987,17 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 		LLController->SubjectRepresentation.Role = ULiveLinkCameraRole::StaticClass();
 		// Don't set SubjectName — let it discover from the source
 
+		// Pre-populate ControllerMap now: direct Role assignment bypasses
+		// ULiveLinkComponentController::UpdateControllerMap(), so the map
+		// would otherwise stay empty until the next editor tick — causing
+		// ApplyCalibration to silently fail on the first click.
+		if (!LLController->ControllerMap.Contains(ULiveLinkCameraRole::StaticClass()))
+		{
+			ULiveLinkCameraController* CamCtrl = NewObject<ULiveLinkCameraController>(LLController);
+			CamCtrl->bUseCameraRange = true;
+			LLController->ControllerMap.Add(ULiveLinkCameraRole::StaticClass(), CamCtrl);
+		}
+
 		AddLog(TEXT("  Subject role: Camera (from LiveLink)"));
 	}
 	else
