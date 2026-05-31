@@ -8,8 +8,8 @@
 #include "LiveLinkComponentController.h"
 #include "LiveLinkCameraController.h"
 #include "Roles/LiveLinkCameraRole.h"
-#include "Camera/CineCameraActor.h"
-#include "Camera/CineCameraComponent.h"
+#include "CineCameraActor.h"
+#include "CineCameraComponent.h"
 #include "LensFile.h"
 #include "LensComponent.h"
 #include "CameraCalibrationSubsystem.h"
@@ -207,8 +207,9 @@ FGuid UFonixFlowTrackerSetupSubsystem::CreateLiveLinkSource(const FTrackingConne
 		return SourceGuid;
 	}
 
-	IModularFeatures& ModularFeatures = IModularFeatures::Get();
-	TArray<ULiveLinkSourceFactory*> Factories = ModularFeatures.GetModularFeatureImplementations<ULiveLinkSourceFactory>();
+	// Find all ULiveLinkSourceFactory subclasses by looking up derived classes
+	TArray<UClass*> FactoryClasses;
+	GetDerivedClasses(ULiveLinkSourceFactory::StaticClass(), FactoryClasses, true);
 
 	ULiveLinkSourceFactory* TargetFactory = nullptr;
 	FString ConnectionString;
@@ -217,11 +218,11 @@ FGuid UFonixFlowTrackerSetupSubsystem::CreateLiveLinkSource(const FTrackingConne
 	{
 	case ETrackingProtocol::FreeD:
 	{
-		for (ULiveLinkSourceFactory* Factory : Factories)
+		for (UClass* FactoryClass : FactoryClasses)
 		{
-			if (Factory && Factory->GetSourceDisplayName().ToString().Contains(TEXT("FreeD")))
+			if (FactoryClass && FactoryClass->GetName().Contains(TEXT("FreeD")))
 			{
-				TargetFactory = Factory;
+				TargetFactory = Cast<ULiveLinkSourceFactory>(FactoryClass->GetDefaultObject());
 				break;
 			}
 		}
@@ -238,11 +239,11 @@ FGuid UFonixFlowTrackerSetupSubsystem::CreateLiveLinkSource(const FTrackingConne
 
 	case ETrackingProtocol::OpenTrackIO:
 	{
-		for (ULiveLinkSourceFactory* Factory : Factories)
+		for (UClass* FactoryClass : FactoryClasses)
 		{
-			if (Factory && Factory->GetSourceDisplayName().ToString().Contains(TEXT("OpenTrack")))
+			if (FactoryClass && (FactoryClass->GetName().Contains(TEXT("OpenTrack")) || FactoryClass->GetName().Contains(TEXT("OpenTrackIO"))))
 			{
-				TargetFactory = Factory;
+				TargetFactory = Cast<ULiveLinkSourceFactory>(FactoryClass->GetDefaultObject());
 				break;
 			}
 		}

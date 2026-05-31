@@ -13,13 +13,13 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SSeparator.h"
-#include "Camera/CineCameraActor.h"
-#include "Camera/CineCameraComponent.h"
+#include "CineCameraActor.h"
+#include "CineCameraComponent.h"
 #include "LensFile.h"
 #include "Engine/World.h"
 #include "Engine/Engine.h"
 #include "Editor.h"
-#include "EditorStyleSet.h"
+#include "Styling/AppStyle.h"
 
 #define LOCTEXT_NAMESPACE "SFonixFlowTrackerSetupWizard"
 
@@ -881,9 +881,9 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupWizard::BuildAnchorPointStep()
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 12)
 	[ SNew(STextBlock).Text(LOCTEXT("AnchorDesc", "The anchor point is the origin for all tracking data. Set position to match your physical tracking system origin.")).AutoWrapText(true) ]
 	+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 12)
-	.Visibility_Lambda([this]() -> EVisibility { return CameraConfig.bCreateAnchorPoint ? EVisibility::Visible : EVisibility::Collapsed; })
 	[
 		SNew(SVerticalBox)
+		.Visibility_Lambda([this]() -> EVisibility { return CameraConfig.bCreateAnchorPoint ? EVisibility::Visible : EVisibility::Collapsed; })
 		+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
 		[ SNew(STextBlock).Text(LOCTEXT("AnchorPos", "Position (X, Y, Z):")).Font(FCoreStyle::GetDefaultFontStyle("Bold", 12)) ]
 		+ SVerticalBox::Slot().AutoHeight()

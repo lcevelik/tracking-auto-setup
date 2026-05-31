@@ -10,7 +10,7 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Input/SHyperlink.h"
-#include "EditorStyleSet.h"
+#include "Styling/AppStyle.h"
 #include "HttpModule.h"
 #include "Interfaces/IHttpRequest.h"
 #include "Interfaces/IHttpResponse.h"
@@ -42,7 +42,7 @@ void SFonixFlowTrackerAIChatPanel::Construct(const FArguments& InArgs)
 		.Padding(8, 4)
 		[
 			SNew(SBorder)
-			.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+			.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
 			[
 				SNew(STextBlock)
 				.Text(LOCTEXT("ChatHeader", "FonixFlow Tracker — AI Assistant"))
@@ -72,12 +72,11 @@ void SFonixFlowTrackerAIChatPanel::Construct(const FArguments& InArgs)
 			+ SHorizontalBox::Slot()
 			.FillWidth(1.0f)
 			[
-				SAssignNew(InputBox, SMultiLineEditableTextBox)
-				.HintText(LOCTEXT("InputHint", "Ask about tracking setup, FreeD, OpenTrack, lens calibration..."))
-				.OnTextCommitted_Raw(this, &SFonixFlowTrackerAIChatPanel::OnInputTextCommitted)
-				.IsReadOnly(!bHasKey)
-				.AutoWrapText(true)
-				.MinDesiredHeight(60)
+			SAssignNew(InputBox, SMultiLineEditableTextBox)
+			.HintText(LOCTEXT("InputHint", "Ask about tracking setup, FreeD, OpenTrack, lens calibration..."))
+			.OnTextCommitted_Raw(this, &SFonixFlowTrackerAIChatPanel::OnInputTextCommitted)
+			.IsReadOnly(!bHasKey)
+			.AutoWrapText(true)
 			]
 
 			+ SHorizontalBox::Slot()
@@ -137,7 +136,7 @@ TSharedPtr<SWidget> SFonixFlowTrackerAIChatPanel::BuildAPIKeyWarning()
 	}
 
 	return SNew(SBorder)
-		.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+		.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
 		.BorderBackgroundColor(FSlateColor(FLinearColor(0.8f, 0.4f, 0.1f)))
 		.Padding(12, 8)
 		[
@@ -214,7 +213,7 @@ void SFonixFlowTrackerAIChatPanel::AddMessageToChat(const FChatMessage& Message)
 	.Padding(4, 2)
 	[
 		SNew(SBorder)
-		.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+		.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
 		.Padding(8)
 		[
 			SNew(SVerticalBox)
@@ -249,7 +248,7 @@ void SFonixFlowTrackerAIChatPanel::AddThinkingIndicator()
 	.Padding(4, 2)
 	[
 		SAssignNew(ThinkingWidget, SBorder)
-		.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+		.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
 		.Padding(8)
 		[
 			SNew(STextBlock)
