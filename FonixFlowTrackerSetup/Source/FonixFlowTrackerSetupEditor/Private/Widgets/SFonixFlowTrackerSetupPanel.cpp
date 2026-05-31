@@ -621,6 +621,11 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildCalibrationSection()
 			+ SVerticalBox::Slot().AutoHeight()
 			[ SNew(STextBlock).Text_Raw(this, &SFonixFlowTrackerSetupPanel::GetLiveLinkFocusText).Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
 				.ColorAndOpacity(FSlateColor(FLinearColor(0.2f, 0.8f, 0.4f))) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0, 4, 0, 0)
+			[ SNew(STextBlock).Text(LOCTEXT("LLZoom", "LiveLink Zoom (mm):")).Font(FCoreStyle::GetDefaultFontStyle("Regular", 10)) ]
+			+ SVerticalBox::Slot().AutoHeight()
+			[ SNew(STextBlock).Text_Raw(this, &SFonixFlowTrackerSetupPanel::GetLiveLinkZoomText).Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
+				.ColorAndOpacity(FSlateColor(FLinearColor(0.4f, 0.7f, 1.0f))) ]
 		]
 	]
 
@@ -655,6 +660,45 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildCalibrationSection()
 				[ SNew(SButton).Text(LOCTEXT("CaptureFocusMax", "Capture Far"))
 					.OnClicked_Lambda([this]() -> FReply { CaptureFocusMax(); return FReply::Handled(); })
 					.ButtonStyle(FAppStyle::Get(), "FlatButton.Default") ]
+			]
+		]
+	]
+
+	// Zoom calibration (zoom lenses only)
+	+ SVerticalBox::Slot().AutoHeight().Padding(0, 4, 0, 4)
+	[
+		SAssignNew(ZoomCalibBox, SBox)
+		.Visibility(!bUsePrimeLens ? EVisibility::Visible : EVisibility::Collapsed)
+		[
+			SNew(SBorder)
+			.BorderImage(FAppStyle::GetBrush("ToolPanel.DarkGroupBorder"))
+			.Padding(8)
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
+				[ SNew(STextBlock).Text(LOCTEXT("ZoomCalibLabel", "Focal Length (Zoom)")).Font(FCoreStyle::GetDefaultFontStyle("Bold", 11)) ]
+
+				+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+					[ SNew(STextBlock).Text_Raw(this, &SFonixFlowTrackerSetupPanel::GetZoomWideText) ]
+					+ SHorizontalBox::Slot().AutoWidth()
+					[ SNew(SButton).Text(LOCTEXT("CaptureZoomWide", "Capture Wide"))
+						.OnClicked_Lambda([this]() -> FReply { CaptureZoomWide(); return FReply::Handled(); })
+						.ButtonStyle(FAppStyle::Get(), "FlatButton.Default") ]
+				]
+
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+					[ SNew(STextBlock).Text_Raw(this, &SFonixFlowTrackerSetupPanel::GetZoomTeleText) ]
+					+ SHorizontalBox::Slot().AutoWidth()
+					[ SNew(SButton).Text(LOCTEXT("CaptureZoomTele", "Capture Tele"))
+						.OnClicked_Lambda([this]() -> FReply { CaptureZoomTele(); return FReply::Handled(); })
+						.ButtonStyle(FAppStyle::Get(), "FlatButton.Default") ]
+				]
 			]
 		]
 	]
@@ -815,6 +859,18 @@ void SFonixFlowTrackerSetupPanel::PollLiveLinkData()
 				LiveLinkFocusValue = (Delta > 0.0f)
 					? PhysicalMin + CameraFrame->FocusDistance * Delta
 					: CameraFrame->FocusDistance;
+
+				// Reconstruct zoom physical mm from FreeD FocalLength (also 0.0–1.0 normalized)
+				float ZoomPhysMin = 0.0f, ZoomPhysMax = 0.0f;
+				if (FreeDSettings)
+				{
+					ZoomPhysMin = (float)FreeDSettings->FocalLengthEncoderData.Min;
+					ZoomPhysMax = (float)FreeDSettings->FocalLengthEncoderData.Max;
+				}
+				const float ZoomDelta = ZoomPhysMax - ZoomPhysMin;
+				LiveLinkZoomValue = (ZoomDelta > 0.0f)
+					? ZoomPhysMin + CameraFrame->FocalLength * ZoomDelta
+					: CameraFrame->FocalLength;
 			}
 		}
 
@@ -855,6 +911,7 @@ void SFonixFlowTrackerSetupPanel::UpdateLensTypeVisibility()
 
 	if (PrimeLensInputBox.IsValid()) PrimeLensInputBox->SetVisibility(PrimeVis);
 	if (ZoomLensInputBox.IsValid()) ZoomLensInputBox->SetVisibility(ZoomVis);
+	if (ZoomCalibBox.IsValid()) ZoomCalibBox->SetVisibility(ZoomVis);
 }
 
 // ── Setup ───────────────────────────────────────────────────────────
@@ -1042,6 +1099,13 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 			CineComp->LensSettings.MaxFocalLength = PrimeLensFocalLengthMM;
 			AddLog(FString::Printf(TEXT("  Prime lens: %.0f mm"), PrimeLensFocalLengthMM));
 		}
+		else
+		{
+			CineComp->LensSettings.MinFocalLength = FocalLengthMinMM;
+			CineComp->LensSettings.MaxFocalLength = FocalLengthMaxMM;
+			AddLog(FString::Printf(TEXT("  Zoom lens: %.0f\u2013%.0f mm"), FocalLengthMinMM, FocalLengthMaxMM));
+		}
+		CineComp->MarkPackageDirty();
 	}
 
 	// ── Done ─────────────────────────────────────────────────────────
@@ -1077,6 +1141,24 @@ void SFonixFlowTrackerSetupPanel::CaptureFocusMax()
 	AddLog(FString::Printf(TEXT("Focus FAR captured: %.2f cm"), FocusEncoderMax));
 }
 
+void SFonixFlowTrackerSetupPanel::CaptureZoomWide()
+{
+	ZoomEncoderWide = LiveLinkZoomValue;
+	bZoomWideCaptured = true;
+	// Also update the spinbox so the user sees the measured value
+	FocalLengthMinMM = ZoomEncoderWide;
+	AddLog(FString::Printf(TEXT("Zoom WIDE captured: %.2f mm"), ZoomEncoderWide));
+}
+
+void SFonixFlowTrackerSetupPanel::CaptureZoomTele()
+{
+	ZoomEncoderTele = LiveLinkZoomValue;
+	bZoomTeleCaptured = true;
+	// Also update the spinbox so the user sees the measured value
+	FocalLengthMaxMM = ZoomEncoderTele;
+	AddLog(FString::Printf(TEXT("Zoom TELE captured: %.2f mm"), ZoomEncoderTele));
+}
+
 // ── Apply Calibration ───────────────────────────────────────────────
 
 void SFonixFlowTrackerSetupPanel::ApplyCalibration()
@@ -1100,7 +1182,19 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 	LensConfig.FocusDistanceMinCM = FocusEncoderMin; // physical near (cm) at encoder=0
 	LensConfig.FocusDistanceMaxCM = FocusEncoderMax; // physical far  (cm) at encoder=1
 
+	if (bUsePrimeLens)
+	{
+		LensConfig.FocalLengthMinMM = PrimeLensFocalLengthMM;
+		LensConfig.FocalLengthMaxMM = PrimeLensFocalLengthMM;
+	}
+	else
+	{
+		LensConfig.FocalLengthMinMM = bZoomWideCaptured ? ZoomEncoderWide : FocalLengthMinMM;
+		LensConfig.FocalLengthMaxMM = bZoomTeleCaptured ? ZoomEncoderTele : FocalLengthMaxMM;
+	}
+
 	AddLog(FString::Printf(TEXT("Focus: near=%.2f cm, far=%.2f cm"), FocusEncoderMin, FocusEncoderMax));
+	AddLog(FString::Printf(TEXT("Zoom: wide=%.2f mm, tele=%.2f mm"), LensConfig.FocalLengthMinMM, LensConfig.FocalLengthMaxMM));
 
 	ULensFile* LensFile = ULensSetupUtility::ApplyLensConfiguration(CineCamera, LensConfig);
 	if (LensFile)
@@ -1159,6 +1253,23 @@ FText SFonixFlowTrackerSetupPanel::GetFocusMaxText() const
 	return FText::FromString(FString::Printf(TEXT("Far: %.2f cm"), FocusEncoderMax));
 }
 
+FText SFonixFlowTrackerSetupPanel::GetZoomWideText() const
+{
+	if (!bZoomWideCaptured) return LOCTEXT("ZoomWideUncaptured", "Wide: not captured");
+	return FText::FromString(FString::Printf(TEXT("Wide: %.2f mm"), ZoomEncoderWide));
+}
+
+FText SFonixFlowTrackerSetupPanel::GetZoomTeleText() const
+{
+	if (!bZoomTeleCaptured) return LOCTEXT("ZoomTeleUncaptured", "Tele: not captured");
+	return FText::FromString(FString::Printf(TEXT("Tele: %.2f mm"), ZoomEncoderTele));
+}
+
+FText SFonixFlowTrackerSetupPanel::GetLiveLinkZoomText() const
+{
+	return FText::FromString(FString::Printf(TEXT("%.2f mm"), LiveLinkZoomValue));
+}
+
 FText SFonixFlowTrackerSetupPanel::GetSelectedCameraText() const
 {
 	if (SelectedCamera) return FText::Format(LOCTEXT("CamSelected", "Selected: {0}"), FText::FromString(SelectedCamera->GetActorLabel()));
@@ -1184,7 +1295,9 @@ EVisibility SFonixFlowTrackerSetupPanel::GetCalibrationVisibility() const
 
 bool SFonixFlowTrackerSetupPanel::IsCalibrationReady() const
 {
-	return bFocusMinCaptured && bFocusMaxCaptured;
+	if (!bFocusMinCaptured || !bFocusMaxCaptured) return false;
+	if (!bUsePrimeLens && (!bZoomWideCaptured || !bZoomTeleCaptured)) return false;
+	return true;
 }
 
 bool SFonixFlowTrackerSetupPanel::IsSetupButtonEnabled() const

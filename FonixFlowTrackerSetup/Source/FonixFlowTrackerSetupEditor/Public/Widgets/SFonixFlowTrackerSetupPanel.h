@@ -46,14 +46,20 @@ private:
 
 	// LiveLink polling — actual values from FreeD (physical cm/mm when source is calibrated)
 	float LiveLinkFocusValue = 0.0f;
+	float LiveLinkZoomValue = 0.0f;    // live focal length reconstructed from FreeD zoom encoder
 	bool bLiveLinkPollingActive = false;
 	FTimerHandle LiveLinkPollTimerHandle;
 
-	// Calibration — captured physical values (cm) direct from LiveLink
+	// Calibration — captured physical values direct from LiveLink
 	float FocusEncoderMin = 0.0f;
 	float FocusEncoderMax = 0.0f;
 	bool bFocusMinCaptured = false;
 	bool bFocusMaxCaptured = false;
+
+	float ZoomEncoderWide = 0.0f;    // focal length (mm) captured at wide end
+	float ZoomEncoderTele = 0.0f;    // focal length (mm) captured at tele end
+	bool bZoomWideCaptured = false;
+	bool bZoomTeleCaptured = false;
 
 	bool bSetupRunning = false;
 	bool bSetupComplete = false;
@@ -69,6 +75,7 @@ private:
 	// Lens type SBox references for visibility control
 	TSharedPtr<SBox> PrimeLensInputBox;
 	TSharedPtr<SBox> ZoomLensInputBox;
+	TSharedPtr<SBox> ZoomCalibBox;
 
 	// Log scroll box for auto-scroll to bottom
 	TSharedPtr<SScrollBox> LogScrollBox;
@@ -89,6 +96,8 @@ private:
 	void RunOneClickSetup();
 	void CaptureFocusMin();
 	void CaptureFocusMax();
+	void CaptureZoomWide();
+	void CaptureZoomTele();
 	void ApplyCalibration();
 	void DetectLocalIP();
 	void AddLog(const FString& Message);
@@ -104,9 +113,12 @@ private:
 	FText GetIPAddressText() const;
 	FText GetFocusMinText() const;
 	FText GetFocusMaxText() const;
+	FText GetZoomWideText() const;
+	FText GetZoomTeleText() const;
 	FText GetSetupStatusText() const;
 	FText GetSelectedCameraText() const;
 	FText GetLiveLinkFocusText() const;
+	FText GetLiveLinkZoomText() const;
 	EVisibility GetCalibrationVisibility() const;
 	bool IsCalibrationReady() const;
 	bool IsSetupButtonEnabled() const;

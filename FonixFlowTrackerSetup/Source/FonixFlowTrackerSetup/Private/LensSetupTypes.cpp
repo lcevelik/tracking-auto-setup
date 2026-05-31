@@ -175,8 +175,13 @@ void ULensSetupUtility::ConfigureCineCamera(UCineCameraComponent* Camera, const 
 	Camera->Filmback.SensorWidth = Config.SensorWidthMM;
 	Camera->Filmback.SensorHeight = Config.SensorHeightMM;
 
-	UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Configured CineCamera filmback: %.1fx%.1f mm"),
-		Config.SensorWidthMM, Config.SensorHeightMM);
+	// Set focal length range so the LiveLink camera controller can interpolate zoom
+	// (controller uses Lerp(MinFocalLength, MaxFocalLength, normalized_zoom_encoder))
+	Camera->LensSettings.MinFocalLength = Config.FocalLengthMinMM;
+	Camera->LensSettings.MaxFocalLength = Config.FocalLengthMaxMM;
+
+	UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Configured CineCamera filmback: %.1fx%.1f mm, FL: %.0f–%.0f mm"),
+		Config.SensorWidthMM, Config.SensorHeightMM, Config.FocalLengthMinMM, Config.FocalLengthMaxMM);
 }
 
 void ULensSetupUtility::ConfigureLensComponent(ULensComponent* LensComp, ULensFile* LensFile, bool bUseLiveLink)
