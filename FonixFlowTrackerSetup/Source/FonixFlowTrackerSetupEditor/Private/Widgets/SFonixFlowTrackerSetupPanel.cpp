@@ -1033,25 +1033,37 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 	{
 		// Find the FreeD connection settings struct via reflection
 		UScriptStruct* FreeDSettingsStruct = nullptr;
-		for (TObjectIterator<UScriptStruct> It; It; ++It)
 		{
-			if (It->GetName() == TEXT("LiveLinkFreeDConnectionSettings"))
+			TArray<UObject*> Structs;
+			GetObjectsOfClass(UScriptStruct::StaticClass(), Structs);
+			for (UObject* Obj : Structs)
 			{
-				FreeDSettingsStruct = *It;
-				break;
+				if (Obj && Obj->GetName() == TEXT("LiveLinkFreeDConnectionSettings"))
+				{
+					FreeDSettingsStruct = Cast<UScriptStruct>(Obj);
+					break;
+				}
 			}
 		}
 
 		// Find the FreeD source factory
 		ULiveLinkSourceFactory* FreeDFactory = nullptr;
-		for (TObjectIterator<ULiveLinkSourceFactory> It; It; ++It)
 		{
-			FText Name = It->GetSourceDisplayName();
-			if (Name.ToString().Contains(TEXT("FreeD")))
+			TArray<UObject*> Factories;
+			GetObjectsOfClass(ULiveLinkSourceFactory::StaticClass(), Factories);
+			for (UObject* Obj : Factories)
 			{
-				FreeDFactory = *It;
-				AddLog(FString::Printf(TEXT("  Factory: %s"), *Name.ToString()));
-				break;
+				ULiveLinkSourceFactory* Factory = Cast<ULiveLinkSourceFactory>(Obj);
+				if (Factory)
+				{
+					FText Name = Factory->GetSourceDisplayName();
+					if (Name.ToString().Contains(TEXT("FreeD")))
+					{
+						FreeDFactory = Factory;
+						AddLog(FString::Printf(TEXT("  Factory: %s"), *Name.ToString()));
+						break;
+					}
+				}
 			}
 		}
 
