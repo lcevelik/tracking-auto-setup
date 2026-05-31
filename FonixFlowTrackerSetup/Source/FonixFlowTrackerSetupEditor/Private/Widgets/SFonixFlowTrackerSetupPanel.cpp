@@ -781,9 +781,9 @@ void SFonixFlowTrackerSetupPanel::AddLog(const FString& Message)
 {
 	FString Timestamp = FDateTime::Now().ToString(TEXT("%H:%M:%S"));
 	FString Line = FString::Printf(TEXT("[%s] %s\n"), *Timestamp, *Message);
-	FString LogPath = FPaths::ProjectLogDir() / TEXT("FonixFlowTracker.log");
+	FString LogFilePath = FPaths::ProjectLogDir() / TEXT("FonixFlowTracker.log");
 	IFileManager::Get().MakeDirectory(*FPaths::ProjectLogDir(), true);
-	FFileHelper::SaveStringToFile(Line, *LogPath,
+	FFileHelper::SaveStringToFile(Line, *LogFilePath,
 		FFileHelper::EEncodingOptions::AutoDetect, &IFileManager::Get(), FILEWRITE_Append);
 }
 
