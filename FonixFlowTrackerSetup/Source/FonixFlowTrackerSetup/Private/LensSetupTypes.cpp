@@ -63,8 +63,8 @@ ULensFile* ULensSetupUtility::CreateLensFile(const FLensConfiguration& Config)
 			LensFile->LensInfo.ImageDimensions = Config.ImageDimensions;
 			LensFile->LensInfo.SqueezeFactor = Config.SqueezeFactor;
 
-			// Set data mode to Geometric (not STMap)
-			LensFile->DataMode = ELensDataMode::Geometric;
+			// Set data mode to Parameters (not STMap)
+			LensFile->DataMode = ELensDataMode::Parameters;
 
 			// Populate tables
 			PopulateEncoderTable(LensFile, Config);
@@ -98,7 +98,6 @@ void ULensSetupUtility::PopulateEncoderTable(ULensFile* LensFile, const FLensCon
 	// Clear existing encoder data
 	LensFile->EncodersTable.Focus.Reset();
 	LensFile->EncodersTable.Iris.Reset();
-	LensFile->EncodersTable.Zoom.Reset();
 
 	// Populate focus encoder mapping
 	// Maps raw encoder values (0 to MaxRaw) to physical focus distance (in cm)
@@ -136,8 +135,8 @@ void ULensSetupUtility::PopulateEncoderTable(ULensFile* LensFile, const FLensCon
 		// Physical focal length in mm
 		float PhysicalValue = FMath::Lerp(Config.FocalLengthMinMM, Config.FocalLengthMaxMM, Alpha);
 
-		// Add key to the zoom encoder curve
-		FKeyHandle KeyHandle = LensFile->EncodersTable.Zoom.AddKey(RawValue, PhysicalValue);
+		// Add key to the iris encoder curve (FreeD uses Iris channel for focal length encoder)
+		FKeyHandle KeyHandle = LensFile->EncodersTable.Iris.AddKey(RawValue, PhysicalValue);
 
 		UE_LOG(LogTemp, Verbose, TEXT("FonixFlowTrackerSetup: Zoom encoder point %d: raw=%.0f -> physical=%.1f mm"),
 			i, RawValue, PhysicalValue);
