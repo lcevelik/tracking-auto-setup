@@ -5,12 +5,14 @@
 #include "Styling/SlateStyleRegistry.h"
 #include "Styling/SlateTypes.h"
 #include "Interfaces/IPluginManager.h"
-#include "Styling/SlateStyleMacros.h"
 #include "Styling/CoreStyle.h"
 #include "SlateOptMacros.h"
 #include "Brushes/SlateImageBrush.h"
 #include "Misc/Paths.h"
 
+#undef IMAGE_BRUSH
+#undef BOX_BRUSH
+#undef BORDER_BRUSH
 #define IMAGE_BRUSH(RelativePath, ...) FSlateImageBrush(Style->RootToContentDir(RelativePath, TEXT(".png")), __VA_ARGS__)
 #define BOX_BRUSH(RelativePath, ...) FSlateBoxBrush(Style->RootToContentDir(RelativePath, TEXT(".png")), __VA_ARGS__)
 #define BORDER_BRUSH(RelativePath, ...) FSlateBorderBrush(Style->RootToContentDir(RelativePath, TEXT(".png")), __VA_ARGS__)
@@ -62,20 +64,20 @@ TSharedRef<FSlateStyleSet> FFonixFlowTrackerSetupStyle::Create()
 	// Set content root to the plugin's Resources directory
 	Style->SetContentRoot(IPluginManager::Get().FindPlugin("FonixFlowTrackerSetup")->GetBaseDir() / TEXT("Resources"));
 
-	// Register icon brushes (using .png icons)
-	// Main plugin icon (camera with tracking waves)
-	Style->Set("FonixFlowTrackerSetup.Icon", new IMAGE_BRUSH("Icons/FonixFlowTrackerSetup", FVector2D(64, 64)));
+	// Register PNG icon brushes
+	// Main plugin icon — blue "FF" square matching the panel header
+	Style->Set("FonixFlowTrackerSetup.Icon", new IMAGE_BRUSH("Icons/FonixFlowFF", FVector2D(20, 20)));
 
 	// Toolbar icons (smaller versions)
-	Style->Set("FonixFlowTrackerSetup.WizardIcon", new IMAGE_BRUSH("Icons/FonixFlowTrackerSetup", FVector2D(40, 40)));
-	Style->Set("FonixFlowTrackerSetup.AIChatIcon", new IMAGE_BRUSH("Icons/FonixFlowTrackerSetup", FVector2D(40, 40)));
-	Style->Set("FonixFlowTrackerSetup.QuickSetupIcon", new IMAGE_BRUSH("Icons/FonixFlowTrackerSetup", FVector2D(40, 40)));
+	Style->Set("FonixFlowTrackerSetup.WizardIcon", new IMAGE_BRUSH("Icons/FonixFlowFF", FVector2D(20, 20)));
+	Style->Set("FonixFlowTrackerSetup.AIChatIcon", new IMAGE_BRUSH("Icons/FonixFlowFF", FVector2D(20, 20)));
+	Style->Set("FonixFlowTrackerSetup.QuickSetupIcon", new IMAGE_BRUSH("Icons/FonixFlowFF", FVector2D(20, 20)));
 
 	// Tab icons
-	Style->Set("FonixFlowTrackerSetup.TabIcon", new IMAGE_BRUSH("Icons/FonixFlowTrackerSetup", FVector2D(16, 16)));
+	Style->Set("FonixFlowTrackerSetup.TabIcon", new IMAGE_BRUSH("Icons/FonixFlowFF", FVector2D(16, 16)));
 
 	// Large icon for panels
-	Style->Set("FonixFlowTrackerSetup.PanelIcon", new IMAGE_BRUSH("Icons/FonixFlowTrackerSetup", FVector2D(128, 128)));
+	Style->Set("FonixFlowTrackerSetup.PanelIcon", new IMAGE_BRUSH("Icons/FonixFlowFF", FVector2D(40, 40)));
 
 	return Style;
 }

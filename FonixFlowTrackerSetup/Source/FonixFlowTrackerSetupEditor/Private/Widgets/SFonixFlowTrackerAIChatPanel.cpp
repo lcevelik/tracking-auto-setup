@@ -72,12 +72,12 @@ void SFonixFlowTrackerAIChatPanel::Construct(const FArguments& InArgs)
 			+ SHorizontalBox::Slot()
 			.FillWidth(1.0f)
 			[
-			SAssignNew(InputBox, SMultiLineEditableTextBox)
-			.HintText(LOCTEXT("InputHint", "Ask about tracking setup, FreeD, OpenTrack, lens calibration..."))
-			.OnTextCommitted_Raw(this, &SFonixFlowTrackerAIChatPanel::OnInputTextCommitted)
-			.IsReadOnly(!bHasKey)
-			.AutoWrapText(true)
-			]
+				SAssignNew(InputBox, SMultiLineEditableTextBox)
+				.HintText(LOCTEXT("InputHint", "Ask about tracking setup, FreeD, OpenTrack, lens calibration..."))
+				.OnTextCommitted_Raw(this, &SFonixFlowTrackerAIChatPanel::OnInputTextCommitted)
+				.IsReadOnly(!bHasKey)
+				.AutoWrapText(true)
+							]
 
 			+ SHorizontalBox::Slot()
 			.AutoWidth()
@@ -406,4 +406,4 @@ void SFonixFlowTrackerAIChatPanel::OnAPIResponse(FHttpRequestPtr Request, FHttpR
 	AddMessageToChat(AssistantMsg);
 }
 
-#undef LOCTEXT_NAMESPACE
+#undef LOCTEXT_NAMESPACEENDOFFILE

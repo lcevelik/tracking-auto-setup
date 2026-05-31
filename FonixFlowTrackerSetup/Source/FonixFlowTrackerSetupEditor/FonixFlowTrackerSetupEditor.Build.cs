@@ -18,6 +18,7 @@ public class FonixFlowTrackerSetupEditor : ModuleRules
 			"LiveLink",
 			"LiveLinkComponents",
 			"LiveLinkCamera",
+			"LiveLinkFreeD",
 			"CameraCalibrationCore",
 			"LensComponent",
 			"Slate",
@@ -29,9 +30,13 @@ public class FonixFlowTrackerSetupEditor : ModuleRules
 			"PropertyEditor",
 			"WorkspaceMenuStructure",
 			"InputCore",
-			"Http",
+			"HTTP",
 			"Json",
-			"JsonUtilities"
+			"JsonUtilities",
+			"CinematicCamera",
+			"Projects",
+		"Sockets",
+		"Networking"
 		});
 	}
 }

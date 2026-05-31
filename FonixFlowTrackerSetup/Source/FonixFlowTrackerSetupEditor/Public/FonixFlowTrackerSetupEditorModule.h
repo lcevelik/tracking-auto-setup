@@ -18,6 +18,4 @@ private:
 
 	TSharedRef<SDockTab> OnSpawnMainPanelTab(const FSpawnTabArgs& Args);
 	void OnOpenMainPanel();
-	void OnSetupFreeDQuick();
-	void OnSetupOpenTrackQuick();
 };

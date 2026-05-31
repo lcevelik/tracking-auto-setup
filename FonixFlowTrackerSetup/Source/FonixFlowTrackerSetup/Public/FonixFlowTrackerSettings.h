@@ -21,7 +21,9 @@ public:
 
 	//~ Begin UDeveloperSettings interface
 	virtual FName GetCategoryName() const override;
+#if WITH_EDITOR
 	virtual FText GetSectionText() const override;
+#endif
 	//~ End UDeveloperSettings interface
 
 	/** OpenRouter API key (or any OpenAI-compatible API) */

@@ -53,8 +53,17 @@ FFonixFlowTrackerResult UFonixFlowTrackerSetupSubsystem::SetupTracking(
 		return Result;
 	}
 
+	// Get subsystem instance
+	UFonixFlowTrackerSetupSubsystem* Subsystem = World->GetSubsystem<UFonixFlowTrackerSetupSubsystem>();
+	if (!Subsystem)
+	{
+		Result.Message = TEXT("Could not get tracker subsystem");
+		Result.Errors.Add(Result.Message);
+		return Result;
+	}
+
 	// Step 1: Create Live Link source
-	Result.LiveLinkSourceGuid = Get().CreateLiveLinkSource(ConnectionSettings);
+	Result.LiveLinkSourceGuid = Subsystem->CreateLiveLinkSource(ConnectionSettings);
 	if (!Result.LiveLinkSourceGuid.IsValid())
 	{
 		Result.Message = TEXT("Failed to create Live Link source");
@@ -63,7 +72,7 @@ FFonixFlowTrackerResult UFonixFlowTrackerSetupSubsystem::SetupTracking(
 	}
 
 	// Step 2: Create or configure camera
-	Result.CameraActor = Get().CreateTrackedCamera(World, CameraConfig);
+	Result.CameraActor = Subsystem->CreateTrackedCamera(World, CameraConfig);
 	if (!Result.CameraActor)
 	{
 		Result.Message = TEXT("Failed to create/configure camera");
@@ -74,7 +83,7 @@ FFonixFlowTrackerResult UFonixFlowTrackerSetupSubsystem::SetupTracking(
 	// Step 3: Create anchor point
 	if (CameraConfig.bCreateAnchorPoint)
 	{
-		Result.AnchorPoint = Get().CreateAnchorPoint(World, CameraConfig);
+		Result.AnchorPoint = Subsystem->CreateAnchorPoint(World, CameraConfig);
 		if (Result.AnchorPoint)
 		{
 			Result.CameraActor->AttachToActor(Result.AnchorPoint,
@@ -90,7 +99,7 @@ FFonixFlowTrackerResult UFonixFlowTrackerSetupSubsystem::SetupTracking(
 	ACineCameraActor* CineCamera = Cast<ACineCameraActor>(Result.CameraActor);
 	if (CineCamera)
 	{
-		Get().ConfigureLiveLinkComponent(CineCamera, Result.LiveLinkSourceGuid, ConnectionSettings.SubjectName);
+		Subsystem->ConfigureLiveLinkComponent(CineCamera, Result.LiveLinkSourceGuid, ConnectionSettings.SubjectName);
 	}
 
 	// Step 5: Apply lens configuration (creates lens file, configures camera + lens component)
@@ -106,7 +115,7 @@ FFonixFlowTrackerResult UFonixFlowTrackerSetupSubsystem::SetupTracking(
 	// Step 6: Virtual camera integration
 	if (CameraConfig.bEnableVirtualCamera)
 	{
-		Get().ConfigureVirtualCamera(CineCamera, CameraConfig);
+		Subsystem->ConfigureVirtualCamera(CineCamera, CameraConfig);
 	}
 
 	Result.bSuccess = true;
@@ -165,6 +174,7 @@ bool UFonixFlowTrackerSetupSubsystem::RemoveFonixFlowTracker(
 	if (!WorldContextObject) return false;
 
 	ILiveLinkClient* LiveLinkClient = nullptr;
+#if WITH_EDITOR
 	if (FModuleManager::Get().IsModuleLoaded("LiveLink"))
 	{
 		IModularFeatures& ModularFeatures = IModularFeatures::Get();
@@ -173,6 +183,7 @@ bool UFonixFlowTrackerSetupSubsystem::RemoveFonixFlowTracker(
 			LiveLinkClient = &ModularFeatures.GetModularFeature<ILiveLinkClient>(ILiveLinkClient::ModularFeatureName);
 		}
 	}
+#endif
 
 	if (LiveLinkClient && LiveLinkSourceGuid.IsValid())
 	{
@@ -192,7 +203,8 @@ FGuid UFonixFlowTrackerSetupSubsystem::CreateLiveLinkSource(const FTrackingConne
 	FGuid SourceGuid;
 
 	ILiveLinkClient* LiveLinkClient = nullptr;
-	if (FModuleManager::Get().IsModuleLoaded("LiveLink"))
+#if WITH_EDITOR
+	if (FModuleManager::Get().IsModuleLoaded(TEXT("LiveLink")))
 	{
 		IModularFeatures& ModularFeatures = IModularFeatures::Get();
 		if (ModularFeatures.IsModularFeatureAvailable(ILiveLinkClient::ModularFeatureName))
@@ -200,6 +212,7 @@ FGuid UFonixFlowTrackerSetupSubsystem::CreateLiveLinkSource(const FTrackingConne
 			LiveLinkClient = &ModularFeatures.GetModularFeature<ILiveLinkClient>(ILiveLinkClient::ModularFeatureName);
 		}
 	}
+#endif
 
 	if (!LiveLinkClient)
 	{
@@ -207,73 +220,87 @@ FGuid UFonixFlowTrackerSetupSubsystem::CreateLiveLinkSource(const FTrackingConne
 		return SourceGuid;
 	}
 
-	// Find all ULiveLinkSourceFactory subclasses by looking up derived classes
-	TArray<UClass*> FactoryClasses;
-	GetDerivedClasses(ULiveLinkSourceFactory::StaticClass(), FactoryClasses, true);
-
-	ULiveLinkSourceFactory* TargetFactory = nullptr;
-	FString ConnectionString;
-
 	switch (Settings.Protocol)
 	{
 	case ETrackingProtocol::FreeD:
 	{
-		for (UClass* FactoryClass : FactoryClasses)
+		// Find the FreeD connection settings struct via reflection (avoids private header dependency)
+		UScriptStruct* FreeDSettingsStruct = nullptr;
 		{
-			if (FactoryClass && FactoryClass->GetName().Contains(TEXT("FreeD")))
+			TArray<UObject*> Structs;
+			GetObjectsOfClass(UScriptStruct::StaticClass(), Structs);
+			for (UObject* Obj : Structs)
 			{
-				TargetFactory = Cast<ULiveLinkSourceFactory>(FactoryClass->GetDefaultObject());
-				break;
+				if (Obj && Obj->GetName() == TEXT("LiveLinkFreeDConnectionSettings"))
+				{
+					FreeDSettingsStruct = Cast<UScriptStruct>(Obj);
+					break;
+				}
 			}
 		}
 
-		if (TargetFactory)
+		// Find the FreeD source factory
+		ULiveLinkSourceFactory* FreeDFactory = nullptr;
 		{
-			ConnectionString = FString::Printf(
-				TEXT("IPAddress=\"%s\" UDPPortNumber=%d"),
-				*Settings.IPAddress,
-				Settings.FreeDPort);
+			TArray<UObject*> Factories;
+			GetObjectsOfClass(ULiveLinkSourceFactory::StaticClass(), Factories);
+			for (UObject* Obj : Factories)
+			{
+				ULiveLinkSourceFactory* Factory = Cast<ULiveLinkSourceFactory>(Obj);
+				if (Factory && Factory->GetSourceDisplayName().ToString().Contains(TEXT("FreeD")))
+				{
+					FreeDFactory = Factory;
+					break;
+				}
+			}
+		}
+
+		if (FreeDFactory && FreeDSettingsStruct)
+		{
+			TArray<uint8> SettingsMemory;
+			SettingsMemory.SetNumZeroed(FreeDSettingsStruct->GetStructureSize());
+			FreeDSettingsStruct->InitializeDefaultValue(SettingsMemory.GetData());
+
+			FStrProperty* IPProp = CastField<FStrProperty>(FreeDSettingsStruct->FindPropertyByName(FName("IPAddress")));
+			FUInt16Property* PortProp = CastField<FUInt16Property>(FreeDSettingsStruct->FindPropertyByName(FName("UDPPortNumber")));
+
+			if (IPProp) IPProp->SetPropertyValue_InContainer(SettingsMemory.GetData(), TEXT("0.0.0.0"));
+			if (PortProp) PortProp->SetPropertyValue_InContainer(SettingsMemory.GetData(), static_cast<uint16>(Settings.FreeDPort));
+
+			FString ConnectionString;
+			FreeDSettingsStruct->ExportText(ConnectionString, SettingsMemory.GetData(), nullptr, nullptr, PPF_None, nullptr);
+
+			TSharedPtr<ILiveLinkSource> Source = FreeDFactory->CreateSource(ConnectionString);
+			if (Source.IsValid())
+			{
+				SourceGuid = LiveLinkClient->AddSource(Source);
+				UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: FreeD source created — GUID: %s, port: %d"),
+					*SourceGuid.ToString(), Settings.FreeDPort);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("FonixFlowTrackerSetup: FreeD factory returned null source"));
+			}
+
+			FreeDSettingsStruct->DestroyStruct(SettingsMemory.GetData());
+		}
+		else
+		{
+			if (!FreeDFactory)
+				UE_LOG(LogTemp, Error, TEXT("FonixFlowTrackerSetup: LiveLinkFreeD factory not found — ensure LiveLinkFreeD plugin is enabled"));
+			if (!FreeDSettingsStruct)
+				UE_LOG(LogTemp, Error, TEXT("FonixFlowTrackerSetup: FLiveLinkFreeDConnectionSettings struct not found"));
 		}
 		break;
 	}
 
 	case ETrackingProtocol::OpenTrackIO:
-	{
-		for (UClass* FactoryClass : FactoryClasses)
-		{
-			if (FactoryClass && (FactoryClass->GetName().Contains(TEXT("OpenTrack")) || FactoryClass->GetName().Contains(TEXT("OpenTrackIO"))))
-			{
-				TargetFactory = Cast<ULiveLinkSourceFactory>(FactoryClass->GetDefaultObject());
-				break;
-			}
-		}
-
-		if (TargetFactory)
-		{
-			ConnectionString = FString::Printf(
-				TEXT("SourceNumber=%d Protocol=%s"),
-				Settings.OpenTrackSourceNumber,
-				Settings.bOpenTrackUseMulticast ? TEXT("Multicast") : TEXT("Unicast"));
-		}
+		UE_LOG(LogTemp, Warning, TEXT("FonixFlowTrackerSetup: OpenTrack IO not yet implemented"));
 		break;
-	}
 
 	default:
 		UE_LOG(LogTemp, Warning, TEXT("FonixFlowTrackerSetup: Unsupported protocol"));
-		return SourceGuid;
-	}
-
-	if (!TargetFactory)
-	{
-		UE_LOG(LogTemp, Error, TEXT("FonixFlowTrackerSetup: Could not find LiveLink source factory for protocol %d"), (int32)Settings.Protocol);
-		return SourceGuid;
-	}
-
-	TSharedPtr<ILiveLinkSource> NewSource = TargetFactory->CreateSource(ConnectionString);
-	if (NewSource.IsValid())
-	{
-		SourceGuid = LiveLinkClient->AddSource(NewSource);
-		UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Created LiveLink source %s"), *SourceGuid.ToString());
+		break;
 	}
 
 	return SourceGuid;
@@ -299,7 +326,9 @@ ACineCameraActor* UFonixFlowTrackerSetupSubsystem::CreateTrackedCamera(UWorld* W
 
 		if (CineCamera)
 		{
+#if WITH_EDITOR
 			CineCamera->SetActorLabel(Config.CameraName);
+#endif
 			UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Created camera actor '%s'"), *Config.CameraName);
 		}
 	}
@@ -331,7 +360,9 @@ AActor* UFonixFlowTrackerSetupSubsystem::CreateAnchorPoint(UWorld* World, const 
 
 	if (AnchorActor)
 	{
+#if WITH_EDITOR
 		AnchorActor->SetActorLabel(Config.CameraName + TEXT("_Anchor"));
+#endif
 
 		USceneComponent* RootComp = NewObject<USceneComponent>(AnchorActor);
 		RootComp->SetWorldLocation(Config.AnchorLocation);
@@ -365,6 +396,7 @@ void UFonixFlowTrackerSetupSubsystem::ConfigureLiveLinkComponent(
 	SubjectKey.SubjectName = FName(*SubjectName);
 
 	LLController->SubjectRepresentation.Role = ULiveLinkCameraRole::StaticClass();
+	LLController->SubjectRepresentation.Subject = FName(*SubjectName);
 
 	UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Configured LiveLink component for subject '%s'"), *SubjectName);
 }

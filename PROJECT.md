@@ -2,72 +2,99 @@
 
 ## Goals
 - One-click Live Link camera tracking setup for Unreal Engine
-- Support FreeD and OpenTrack IO protocols
-- Automate: Live Link source, camera component, anchor point, lens file, virtual camera
-- Multi-camera support with presets
-- Target UE 5.6+ with backward compatibility to UE 5.0+
-- Distribution: Unreal Marketplace first, GitHub later
+- Single "Setup Now" button automates entire 3D tracking pipeline
+- Support FreeD (3D Protocol) and OpenTrack IO protocols
+- Prime and Zoom lens support with configurable focal length ranges
+- Live encoder readout and calibration from FreeD data stream
+- Target UE 5.6+ with UE 5.7 verified
 
 ## In Progress
-- [ ] Test compilation on WinPC with UE 5.6
-- [ ] Lens encoder range capture from Live Link data stream
-- [ ] Camera rig preset defaults (encoder ranges per manufacturer)
+- [ ] Runtime testing — verify full flow end-to-end in UE Editor
+- [ ] OpenTrack IO protocol support (UI ready, implementation pending)
+- [ ] Verify lens file quality — encoder mapping, focal length tables, image center
 
 ## To Do
 - [ ] Multi-camera setup support (multiple cameras in one scene)
-- [ ] Lens file auto-generation from tracking data
+- [ ] Lens file auto-generation from tracking data over time
 - [ ] Virtual camera integration (VCamCore wiring)
 - [ ] Auto-detect FreeD packets on network
 - [ ] Blueprint function library for procedural setups
 - [ ] Save/load tracking presets
-- [ ] UE 5.0-5.5 version compatibility layer
-- [ ] Marketplace listing preparation
+- [ ] Camera rig preset defaults (encoder ranges per manufacturer: Generic, Sony, Panasonic, Mosys, stYpe, Ncam)
 - [ ] Documentation and examples
 - [ ] AI Chat: streaming responses, markdown rendering
 - [ ] AI Chat: context-aware setup suggestions (read current scene state)
+- [ ] UE 5.5 and below compatibility testing
 
 ## Done
-- [x] Plugin scaffold created (Runtime + Editor modules)
-- [x] Core types defined (FTrackingConnectionSettings, FCameraSetupConfig, FFonixFlowTrackerResult)
-- [x] Subsystem architecture (UFonixFlowTrackerSetupSubsystem)
-- [x] GitHub repo created
-- [x] AI Chat Panel (STrackingAIChatPanel)
-  - [x] OpenRouter/OpenAI-compatible API integration
-  - [x] VP-focused system prompt
-  - [x] Chat history, error handling
-  - [x] Configurable API key/endpoint/model
-- [x] Setup Wizard (SFonixFlowTrackerWizard)
-  - [x] 7-step guided flow: Protocol → Network → Camera → Lens → Anchor → Review → Done
-  - [x] Protocol selection (FreeD/OpenTrack IO)
-  - [x] Camera rig presets (Generic, Panasonic, Sony, stYpe, Mosys, Ncam)
-  - [x] Network config (IP/port, multicast/unicast)
-  - [x] Camera picker (create new or select existing CineCameraActor)
-  - [x] Lens calibration step (capture min/max encoder values)
-  - [x] Anchor point configuration
-  - [x] Virtual camera toggle
-  - [x] Review step with full summary
-- [x] Editor toolbar integration
-  - [x] Wizard tab button
-  - [x] AI Chat tab button
-  - [x] Quick Setup submenu (FreeD/OpenTrack)
-  - [x] Tools menu entries
+- [x] v1.1.0 — UE 5.7 compatibility + workflow improvements
+  - [x] Replace `TObjectIterator` for-loops with `GetObjectsOfClass()` (fixes UE5.7 C++20 MSVC C7568 error)
+  - [x] Applied in both `FonixFlowTrackerSetupSubsystem.cpp` and `SFonixFlowTrackerSetupPanel.cpp`
+  - [x] Drop Log tab from UI — log now writes to `Saved/Logs/FonixFlowTracker.log` via `FFileHelper::SaveStringToFile` with `FILEWRITE_Append`
+  - [x] FF blue square PNG toolbar icon (20×20, #1a3a58 background, white FF pixels, generated via Python struct/zlib)
+  - [x] Active tab highlighting — `SBorder` background color driven by `BorderBackgroundColor_Lambda`
+  - [x] Auto-enable ICVFX and LiveLinkLens plugins via `.uplugin` dependency list
+  - [x] "APPLY LENS FILE" button appears after calibration (`bCalibrationApplied` flag + `Visibility_Lambda`) — calls `ApplyCalibration()` directly, no separate LensComponent creation
+  - [x] Skip duplicate FreeD source — SETUP NOW checks `ActiveSourceGuid` against `GetSources()` before creating a new source
+  - [x] `FSlateVectorImageBrush` not available in UE5.6/5.7 SlateCore — switched to `FSlateImageBrush` + PNG
+  - [x] Fix `LogPath` variable name collision with UE's global `DECLARE_LOG_CATEGORY_EXTERN(LogPath, Warning, All)` — renamed to `LogFilePath`
+  - [x] 2-tab layout: Camera Setup + Calibration (Log tab removed)
+- [x] v1.0.0 — Full calibration pipeline
+  - [x] FreeD source creation on 0.0.0.0 via reflection (ExportText, not ImportText)
+  - [x] LiveLink polling — reads actual encoder values from FreeD at 20Hz
+  - [x] Capture functions read real LiveLink values (not hardcoded 0/0xFFFFFF)
+  - [x] Prime/Zoom lens selector with SAssignNew + explicit visibility control
+  - [x] Zoom calibration: Wide/Tele capture rows (visible for zoom lens only)
+  - [x] Focus distance range configurable (near/far cm)
+  - [x] Zoom µm→mm fix (divide FreeD zoom encoder by 1000)
+  - [x] ApplyCalibration sets FreeD UseManualRange=true via reflection
+  - [x] ApplyCalibration sets UseCameraRange on LiveLink camera controller
+  - [x] LiveLink controller: subject from LiveLink (auto-discovered), Camera role
+  - [x] Lens file: correct encoder mapping for prime (fixed FL) and zoom (min/max)
+  - [x] Iris encoder pinned to MinFStop (FreeD has no iris data)
+  - [x] Pre-populate ControllerMap so ApplyCalibration works on first click
+  - [x] Version bumped to 1.0.0
+- [x] v0.3.0 — UE 5.6 compatibility
+  - [x] UE 5.6 API fixes (FEditorStyle→FAppStyle, CineCamera includes, VCamCore)
+  - [x] LiveLinkFreeD module dependency added
+  - [x] Runtime reflection for FLiveLinkFreeDConnectionSettings (private header)
+  - [x] All 25 compile units pass, both DLLs link clean
+- [x] v0.2.0 — AI Chat, Setup Wizard, Camera Picker
+  - [x] AI Chat Panel (SFonixFlowTrackerAIChatPanel)
+  - [x] Setup Wizard (deprecated, moved to panel)
+  - [x] Camera picker — lists CineCameraActors in level
+  - [x] Editor toolbar integration (button + Tools menu)
+- [x] v0.1.0 — Initial scaffold
+  - [x] Plugin scaffold (Runtime + Editor modules)
+  - [x] Core types (FTrackingConnectionSettings, FCameraSetupConfig, FFonixFlowTrackerResult)
+  - [x] Subsystem architecture (UFonixFlowTrackerSetupSubsystem)
+  - [x] GitHub repo created
 
 ## Blocked
 - (none)
 
 ## Releases
-- v0.2.0 — AI Chat, Setup Wizard, Camera Picker (current)
+- v1.1.0 — UE5.7 C++20 compat, 6 workflow improvements, log to file, FF icon, tab highlight (current)
+- v1.0.0 — Full calibration pipeline, LiveLink polling, prime/zoom, FreeD manual range
+- v0.3.0 — UE 5.6 compatibility, reflection-based FreeD source creation
+- v0.2.0 — AI Chat, Setup Wizard, Camera Picker
 - v0.1.0 — Initial scaffold
 
 ## Notes
-- UE source reference: D:\UE_Engine\UE_5.6 on WinPC (read-only)
+- UE source reference: D:\UE_Engine\UE_5.6 and D:\UE_Engine\UE_5.7 on WinPC (read-only)
 - FreeD module: Engine/Plugins/VirtualProduction/LiveLinkFreeD
-- OpenTrackIO module: Engine/Plugins/VirtualProduction/LiveLinkOpenTrackIO
-- LiveLink Camera: Engine/Plugins/VirtualProduction/LiveLinkCamera
-- Camera Calibration: Engine/Plugins/VirtualProduction/CameraCalibrationCore
-- Virtual Camera: Engine/Plugins/VirtualProduction/VirtualCameraCore
-- FreeD default port: 40000, OpenTrack multicast port: 55555
-- FreeD connection settings: IP + UDP port
-- OpenTrack connection settings: Source number (1-200) for multicast 235.135.1.[N]
+- FreeDConnectionSettings struct is in Private/ — access via reflection (GetObjectsOfClass, not TObjectIterator — TObjectIterator breaks in UE5.7 C++20 MSVC mode with C7568)
+- FreeD source factory: ULiveLinkFreeDSourceFactory — use ExportText for connection string
+- LiveLinkCameraController: access via ControllerMap[ULiveLinkCameraRole::StaticClass()]
+- bUseCameraRange is on ULiveLinkCameraController (not on ULiveLinkComponentController)
+- ILiveLinkClient::GetSubjects(false, false) — UE 5.6 API signature
+- EvaluateFrame_AnyThread takes FLiveLinkSubjectFrameData (not FLiveLinkStaticDataStruct)
+- SVerticalBox::FSlot does NOT have .Visibility() — use SAssignNew + SetVisibility instead
 - FreeD encoder data: Focus (24-bit), Zoom (24-bit), UserDefined (16-bit)
-- Camera rig presets: Generic, Panasonic, Sony, stYpe, Mosys, Ncam
+- FreeD zoom encoder is in µm — divide by 1000 to get mm
+- FreeD default port: 40000
+- Key modules: Sockets, Networking (IP detection), LiveLinkCamera, LiveLinkFreeD
+- SlateCore Brushes in UE5.6/5.7: only SlateImageBrush, SlateColorBrush, SlateDynamicImageBrush, SlateBoxBrush, SlateBorderBrush, SlateRoundedBoxBrush — NO FSlateVectorImageBrush
+- Deploy pipeline: `scp -r FonixFlowTrackerSetup "f@10.0.0.18:F:/Unreal Projects/AbelCineDemo/Plugins/"` then SSH build
+- Build cmd (5.6): `"D:\UE_Engine\UE_5.6\Engine\Build\BatchFiles\Build.bat" AbelCineDemoEditor Win64 Development -Project="F:\Unreal Projects\AbelCineDemo\AbelCineDemo.uproject"`
+- Build cmd (5.7 plugin): `"D:\UE_Engine\UE_5.7\Engine\Build\BatchFiles\RunUAT.bat" BuildPlugin -Plugin="..." -Package="..." -Rocket -TargetPlatforms=Win64`

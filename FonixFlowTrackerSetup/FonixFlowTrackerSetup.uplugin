@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 1,
-	"VersionName": "0.2.0",
+	"Version": 100,
+	"VersionName": "1.0.0",
 	"FriendlyName": "FonixFlow Tracker Setup",
 	"Description": "One-click Live Link camera tracking auto-setup for FreeD and OpenTrack protocols. Includes setup wizard, AI chat assistant, lens calibration, and camera picker.",
 	"Category": "Virtual Production",
@@ -37,11 +37,27 @@
 			"Enabled": true
 		},
 		{
+			"Name": "LiveLinkFreeD",
+			"Enabled": true
+		},
+		{
 			"Name": "CameraCalibrationCore",
 			"Enabled": true
 		},
 		{
+			"Name": "VirtualCameraCore",
+			"Enabled": true
+		},
+		{
 			"Name": "LensComponent",
+			"Enabled": true
+		},
+		{
+			"Name": "ICVFX",
+			"Enabled": true
+		},
+		{
+			"Name": "LiveLinkLens",
 			"Enabled": true
 		}
 	]

@@ -4,15 +4,18 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
-#include "Widgets/Docking/SDockTab.h"
+#include "Widgets/Views/SListView.h"
+#include "Widgets/Layout/SWidgetSwitcher.h"
+#include "FonixFlowTrackerSetupTypes.h"
+#include "LensSetupTypes.h"
 
-class SFonixFlowTrackerSetupWizard;
-class SFonixFlowTrackerAIChatPanel;
+class ACineCameraActor;
+class ULensFile;
+class SScrollBox;
 
 /**
- * Main panel widget for FonixFlow Tracker Setup plugin.
- * Contains tabs for Wizard, AI Chat, and Settings.
- * Opened from the toolbar button.
+ * Unified setup panel for FonixFlow Tracker Setup.
+ * User selects a camera, then clicks "Setup Now" to configure everything.
  */
 class FONIXFLOWTRACKERSETUPEDITOR_API SFonixFlowTrackerSetupPanel : public SCompoundWidget
 {
@@ -21,26 +24,113 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	~SFonixFlowTrackerSetupPanel();
 
 private:
-	/** Tab identifiers */
-	static const FName WizardTabId;
-	static const FName AIChatTabId;
-	static const FName SettingsTabId;
+	// State
+	ETrackingProtocol SelectedProtocol = ETrackingProtocol::FreeD;
+	FString LocalIPAddress;
+	int32 ListeningPort = 40000;
+	FString SubjectName = TEXT("Camera");
 
-	/** Tab widget */
-	TSharedPtr<SDockTab> MainTab;
-	TSharedPtr<SWidget> TabManager;
+	// Camera selection
+	TArray<ACineCameraActor*> AvailableCameras;
+	TArray<TWeakObjectPtr<ACineCameraActor>> CameraWeakPtrs;
+	TSharedPtr<SListView<TWeakObjectPtr<ACineCameraActor>>> CameraListView;
+	ACineCameraActor* SelectedCamera = nullptr;
 
-	/** Child widgets */
-	TSharedPtr<SFonixFlowTrackerSetupWizard> WizardWidget;
-	TSharedPtr<SFonixFlowTrackerAIChatPanel> AIChatWidget;
+	// Lens type
+	bool bUsePrimeLens = false;
+	float PrimeLensFocalLengthMM = 50.0f;
+	float FocalLengthMinMM = 28.0f;
+	float FocalLengthMaxMM = 100.0f;
 
-	/** Build tab content */
-	TSharedRef<SDockTab> OnSpawnWizardTab(const FSpawnTabArgs& Args);
-	TSharedRef<SDockTab> OnSpawnAIChatTab(const FSpawnTabArgs& Args);
-	TSharedRef<SDockTab> OnSpawnSettingsTab(const FSpawnTabArgs& Args);
+	// LiveLink polling — actual values from FreeD (physical cm/mm when source is calibrated)
+	float LiveLinkFocusValue = 0.0f;
+	float LiveLinkZoomValue = 0.0f;    // live focal length reconstructed from FreeD zoom encoder
+	bool bLiveLinkPollingActive = false;
+	FTimerHandle LiveLinkPollTimerHandle;
 
-	/** Build the panel header with icon */
+	// Calibration — captured physical values direct from LiveLink
+	float FocusEncoderMin = 0.0f;
+	float FocusEncoderMax = 0.0f;
+	bool bFocusMinCaptured = false;
+	bool bFocusMaxCaptured = false;
+
+	float ZoomEncoderWide = 0.0f;    // focal length (mm) captured at wide end
+	float ZoomEncoderTele = 0.0f;    // focal length (mm) captured at tele end
+	bool bZoomWideCaptured = false;
+	bool bZoomTeleCaptured = false;
+
+	bool bSetupRunning = false;
+	bool bSetupComplete = false;
+	bool bSetupSuccess = false;
+	bool bCalibrationApplied = false;
+
+	// Source GUID for cleanup
+	FGuid ActiveSourceGuid;
+
+	// Whether the LiveLink subject has been auto-assigned to the controller
+	bool bSubjectAutoAssigned = false;
+
+	// Lens type SBox references for visibility control
+	TSharedPtr<SBox> PrimeLensInputBox;
+	TSharedPtr<SBox> ZoomLensInputBox;
+	TSharedPtr<SBox> ZoomCalibBox;
+
+	// Calibration: "Apply Lens File" button box (shown after Apply Calibration)
+	TSharedPtr<SBox> ApplyLensFileBox;
+
+	// Tab state: 0 = Camera Setup, 1 = Calibration
+	int32 ActiveTab = 0;
+	TSharedPtr<SWidgetSwitcher> TabSwitcher;
+
+	// UI Build
 	TSharedRef<SWidget> BuildHeader();
+	TSharedRef<SWidget> BuildTabBar();
+	TSharedRef<SWidget> BuildCameraSetupTab();
+	TSharedRef<SWidget> BuildCalibrationTab();
+	TSharedRef<SWidget> BuildProtocolSection();
+	TSharedRef<SWidget> BuildNetworkSection();
+	TSharedRef<SWidget> BuildCameraSection();
+	TSharedRef<SWidget> BuildLensTypeSection();
+	TSharedRef<SWidget> BuildSetupButton();
+	TSharedRef<SWidget> BuildCalibrationSection();
+	TSharedRef<SWidget> BuildStatusSection();
+	TSharedRef<SWidget> BuildLogSection();
+
+	void SwitchTab(int32 TabIndex);
+
+	// Actions
+	void RefreshCameraList();
+	void RunOneClickSetup();
+	void CaptureFocusMin();
+	void CaptureFocusMax();
+	void CaptureZoomWide();
+	void CaptureZoomTele();
+	void ApplyCalibration();
+
+	void DetectLocalIP();
+	void AddLog(const FString& Message);
+	void PollLiveLinkData();
+	void StopLiveLinkPolling();
+	void UpdateLensTypeVisibility();
+
+	// Camera list
+	TSharedRef<ITableRow> OnGenerateCameraRow(TWeakObjectPtr<ACineCameraActor> InItem, const TSharedRef<STableViewBase>& OwnerTable);
+	void OnCameraSelected(TWeakObjectPtr<ACineCameraActor> InItem, ESelectInfo::Type SelectInfo);
+
+	// Queries
+	FText GetIPAddressText() const;
+	FText GetFocusMinText() const;
+	FText GetFocusMaxText() const;
+	FText GetZoomWideText() const;
+	FText GetZoomTeleText() const;
+	FText GetSetupStatusText() const;
+	FText GetSelectedCameraText() const;
+	FText GetLiveLinkFocusText() const;
+	FText GetLiveLinkZoomText() const;
+	EVisibility GetCalibrationVisibility() const;
+	bool IsCalibrationReady() const;
+	bool IsSetupButtonEnabled() const;
 };

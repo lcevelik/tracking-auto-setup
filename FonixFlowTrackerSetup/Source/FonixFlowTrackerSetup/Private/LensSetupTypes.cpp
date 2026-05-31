@@ -9,6 +9,9 @@
 #include "CineCameraComponent.h"
 #include "CineCameraActor.h"
 #include "LensComponent.h"
+#include "LiveLinkComponentController.h"
+#include "LiveLinkCameraController.h"
+#include "Roles/LiveLinkCameraRole.h"
 #include "Engine/AssetManager.h"
 #include "Engine/ObjectLibrary.h"
 #include "UObject/SavePackage.h"
@@ -52,7 +55,7 @@ ULensFile* ULensSetupUtility::CreateLensFile(const FLensConfiguration& Config)
 		FString PackageName = FString::Printf(TEXT("/Game/FonixFlowTrackerSetup/%s"), *Config.LensFileName);
 		UPackage* Package = CreatePackage(*PackageName);
 
-		LensFile = NewObject<ULensFile>(Package, FName(*Config.LensFileName), RF_Public | RF_Standalone | RF_MarkAsNative);
+		LensFile = NewObject<ULensFile>(Package, FName(*Config.LensFileName), RF_Public | RF_Standalone);
 
 		if (LensFile)
 		{
@@ -68,8 +71,6 @@ ULensFile* ULensSetupUtility::CreateLensFile(const FLensConfiguration& Config)
 
 			// Populate tables
 			PopulateEncoderTable(LensFile, Config);
-			PopulateFocalLengthTable(LensFile, Config);
-			PopulateImageCenterTable(LensFile, Config);
 
 			// Mark package dirty and save
 			Package->MarkPackageDirty();
@@ -96,53 +97,16 @@ void ULensSetupUtility::PopulateEncoderTable(ULensFile* LensFile, const FLensCon
 	if (!LensFile) return;
 
 	// Clear existing encoder data
-	LensFile->EncodersTable.ClearAll();
+	LensFile->EncodersTable.Focus.Reset();
+	LensFile->EncodersTable.Iris.Reset();
 
-	// Populate focus encoder mapping
-	// Maps raw encoder values (0 to MaxRaw) to physical focus distance (in cm)
-	const FLensEncoderRange& FocusRange = Config.FocusEncoderRange;
-	int32 NumFocusPoints = FMath::Max(2, Config.NumCalibrationPoints);
+	// Focus encoder: normalized encoder 0.0 → near physical (cm), 1.0 → far physical (cm)
+	LensFile->EncodersTable.Focus.AddKey(0.0f, Config.FocusDistanceMinCM);
+	LensFile->EncodersTable.Focus.AddKey(1.0f, Config.FocusDistanceMaxCM);
 
-	for (int32 i = 0; i < NumFocusPoints; i++)
-	{
-		float Alpha = static_cast<float>(i) / static_cast<float>(NumFocusPoints - 1);
-
-		// Raw encoder value
-		float RawValue = FMath::Lerp(static_cast<float>(FocusRange.RawMin), static_cast<float>(FocusRange.RawMax), Alpha);
-
-		// Physical focus distance in cm
-		float PhysicalValue = FMath::Lerp(Config.FocusDistanceMinCM, Config.FocusDistanceMaxCM, Alpha);
-
-		// Add key to the focus encoder curve
-		FKeyHandle KeyHandle = LensFile->EncodersTable.Focus.AddKey(RawValue, PhysicalValue);
-
-		UE_LOG(LogTemp, Verbose, TEXT("FonixFlowTrackerSetup: Focus encoder point %d: raw=%.0f -> physical=%.1f cm"),
-			i, RawValue, PhysicalValue);
-	}
-
-	// Populate zoom/iris encoder mapping
-	const FLensEncoderRange& ZoomRange = Config.ZoomEncoderRange;
-	int32 NumZoomPoints = FMath::Max(2, Config.NumCalibrationPoints);
-
-	for (int32 i = 0; i < NumZoomPoints; i++)
-	{
-		float Alpha = static_cast<float>(i) / static_cast<float>(NumZoomPoints - 1);
-
-		// Raw encoder value
-		float RawValue = FMath::Lerp(static_cast<float>(ZoomRange.RawMin), static_cast<float>(ZoomRange.RawMax), Alpha);
-
-		// Physical focal length in mm
-		float PhysicalValue = FMath::Lerp(Config.FocalLengthMinMM, Config.FocalLengthMaxMM, Alpha);
-
-		// Add key to the iris encoder curve (used for zoom in FreeD)
-		FKeyHandle KeyHandle = LensFile->EncodersTable.Iris.AddKey(RawValue, PhysicalValue);
-
-		UE_LOG(LogTemp, Verbose, TEXT("FonixFlowTrackerSetup: Zoom encoder point %d: raw=%.0f -> physical=%.1f mm"),
-			i, RawValue, PhysicalValue);
-	}
-
-	UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Populated encoder table with %d focus points and %d zoom points"),
-		NumFocusPoints, NumZoomPoints);
+	UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Focus encoder: 0.0 -> %.2f cm, 1.0 -> %.2f cm"),
+		Config.FocusDistanceMinCM, Config.FocusDistanceMaxCM);
+	// Iris table intentionally left empty — aperture/f-stop not controlled
 }
 
 void ULensSetupUtility::PopulateFocalLengthTable(ULensFile* LensFile, const FLensConfiguration& Config)
@@ -181,9 +145,6 @@ void ULensSetupUtility::PopulateFocalLengthTable(ULensFile* LensFile, const FLen
 			i, FocusValue, ZoomValue, Fx, Fy);
 	}
 
-	// Build focus curves from the added points
-	LensFile->FocalLengthTable.BuildFocusCurves();
-
 	UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Populated focal length table with %d points"), NumPoints);
 }
 
@@ -210,26 +171,17 @@ void ULensSetupUtility::ConfigureCineCamera(UCineCameraComponent* Camera, const 
 {
 	if (!Camera) return;
 
-	// Set filmback settings
+	// Set filmback settings only — lens settings and focus are driven by LiveLink/LensComponent
 	Camera->Filmback.SensorWidth = Config.SensorWidthMM;
 	Camera->Filmback.SensorHeight = Config.SensorHeightMM;
-	Camera->Filmback.SensorAspectRatio = Config.SensorAspectRatio;
 
-	// Set lens settings
+	// Set focal length range so the LiveLink camera controller can interpolate zoom
+	// (controller uses Lerp(MinFocalLength, MaxFocalLength, normalized_zoom_encoder))
 	Camera->LensSettings.MinFocalLength = Config.FocalLengthMinMM;
 	Camera->LensSettings.MaxFocalLength = Config.FocalLengthMaxMM;
-	Camera->LensSettings.MinFStop = 1.2f; // Common minimum
-	Camera->LensSettings.MaxFStop = 22.0f; // Common maximum
 
-	// Set focus settings
-	Camera->FocusSettings.ManualFocusDistance = Config.FocusDistanceMinCM; // Start at min
-	Camera->FocusSettings.FocusSmoothingInterpSpeed = 0.0f; // No smoothing for tracked cameras
-	Camera->FocusSettings.bSmoothFocusChanges = false;
-
-	UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Configured CineCamera - Sensor: %.1fx%.1f mm, Focal: %.1f-%.1f mm, Focus: %.0f-%.0f cm"),
-		Config.SensorWidthMM, Config.SensorHeightMM,
-		Config.FocalLengthMinMM, Config.FocalLengthMaxMM,
-		Config.FocusDistanceMinCM, Config.FocusDistanceMaxCM);
+	UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Configured CineCamera filmback: %.1fx%.1f mm, FL: %.0f–%.0f mm"),
+		Config.SensorWidthMM, Config.SensorHeightMM, Config.FocalLengthMinMM, Config.FocalLengthMaxMM);
 }
 
 void ULensSetupUtility::ConfigureLensComponent(ULensComponent* LensComp, ULensFile* LensFile, bool bUseLiveLink)
@@ -253,7 +205,7 @@ void ULensSetupUtility::ConfigureLensComponent(ULensComponent* LensComp, ULensFi
 	}
 
 	// Set filmback override to use lens file sensor dimensions
-	LensComp->SetFilmbackOverrideSource(EFilmbackOverrideSource::LensFile);
+	LensComp->SetFilmbackOverrideSetting(EFilmbackOverrideSource::LensFile);
 
 	// Set distortion source to lens file
 	LensComp->SetDistortionSource(EDistortionSource::LensFile);
@@ -273,20 +225,50 @@ ULensFile* ULensSetupUtility::ApplyLensConfiguration(ACineCameraActor* Camera, c
 	ULensFile* LensFile = CreateLensFile(Config);
 	if (!LensFile) return nullptr;
 
+	// FreeD does not transmit iris data, so pin the iris encoder curve to
+	// MinFStop.  Without this the LiveLink camera controller interpolates
+	// whatever normalised aperture value FreeD happens to send between
+	// MinFStop and MaxFStop, producing a random high f-stop (e.g. f/19).
+	// A flat curve from 0→MinFStop to 1→MinFStop ensures CurrentAperture
+	// always stays at the widest aperture the camera is configured with.
+	{
+		const float MinFStop = CineCamera->LensSettings.MinFStop;
+		LensFile->EncodersTable.Iris.Reset();
+		LensFile->EncodersTable.Iris.AddKey(0.0f, MinFStop);
+		LensFile->EncodersTable.Iris.AddKey(1.0f, MinFStop);
+	}
+
 	// Configure CineCameraComponent
 	ConfigureCineCamera(CineCamera, Config);
 
-	// Find or add LensComponent
-	ULensComponent* LensComp = Camera->FindComponentByClass<ULensComponent>();
-	if (!LensComp)
+	// Set lens file on the LiveLink camera controller (FIZ encoder → physical cm mapping)
+	ULiveLinkComponentController* LLComp = Camera->FindComponentByClass<ULiveLinkComponentController>();
+	if (LLComp)
 	{
-		LensComp = NewObject<ULensComponent>(Camera, TEXT("LensComponent"));
-		LensComp->RegisterComponent();
-		Camera->AddInstanceComponent(LensComp);
-	}
+		// Create the camera controller in ControllerMap if it isn't there yet
+		// (can be missing if ApplyCalibration runs before the first editor tick)
+		if (!LLComp->ControllerMap.Contains(ULiveLinkCameraRole::StaticClass()))
+		{
+			ULiveLinkCameraController* NewCtrl = NewObject<ULiveLinkCameraController>(LLComp);
+			NewCtrl->bUseCameraRange = true;
+			LLComp->ControllerMap.Add(ULiveLinkCameraRole::StaticClass(), NewCtrl);
+		}
 
-	// Configure LensComponent
-	ConfigureLensComponent(LensComp, LensFile, true);
+		ULiveLinkCameraController* CamCtrl = Cast<ULiveLinkCameraController>(
+			LLComp->ControllerMap[ULiveLinkCameraRole::StaticClass()]);
+		if (CamCtrl)
+		{
+			CamCtrl->LensFilePicker.bUseDefaultLensFile = false;
+			CamCtrl->LensFilePicker.LensFile = LensFile;
+			CamCtrl->Modify();
+			UE_LOG(LogTemp, Log, TEXT("FonixFlowTrackerSetup: Lens file '%s' set on LiveLink camera controller"),
+				*LensFile->GetName());
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("FonixFlowTrackerSetup: No LiveLink camera controller found — run Setup Now first"));
+	}
 
 	return LensFile;
 }
