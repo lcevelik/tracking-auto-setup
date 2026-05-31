@@ -1215,8 +1215,8 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 		AddLog(FString::Printf(TEXT("Zoom lens: %.1f - %.1f mm (from captured)"), ZoomEncoderMin, ZoomEncoderMax));
 	}
 
-	AddLog(FString::Printf(TEXT("Focus encoder: %d -> %d (maps to %.0f-%.0f cm)"),
-		FocusEncoderMin, FocusEncoderMax, FocusDistanceMinCM, FocusDistanceMaxCM));
+	AddLog(FString::Printf(TEXT("Focus encoder: %.1f -> %.1f cm"),
+		FocusEncoderMin, FocusEncoderMax));
 
 	ULensFile* LensFile = ULensSetupUtility::ApplyLensConfiguration(CineCamera, LensConfig);
 	if (LensFile)
@@ -1288,9 +1288,9 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 
 					if (bValid) bValid->SetPropertyValue_InContainer(FocusData, true);
 					if (bManual) bManual->SetPropertyValue_InContainer(FocusData, true);
-					if (MinProp) MinProp->SetPropertyValue_InContainer(FocusData, FocusEncoderMin);
-					if (MaxProp) MaxProp->SetPropertyValue_InContainer(FocusData, FocusEncoderMax);
-					AddLog(FString::Printf(TEXT("  FreeD Focus: UseManualRange=true, Min=%d, Max=%d"), FocusEncoderMin, FocusEncoderMax));
+					if (MinProp) MinProp->SetPropertyValue_InContainer(FocusData, FMath::RoundToInt(FocusEncoderMin));
+					if (MaxProp) MaxProp->SetPropertyValue_InContainer(FocusData, FMath::RoundToInt(FocusEncoderMax));
+					AddLog(FString::Printf(TEXT("  FreeD Focus: UseManualRange=true, Min=%.1f, Max=%.1f"), FocusEncoderMin, FocusEncoderMax));
 				}
 
 				// Set focal length encoder manual range
@@ -1313,9 +1313,9 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 					{
 						if (bValid) bValid->SetPropertyValue_InContainer(ZoomData, true);
 						if (bManual) bManual->SetPropertyValue_InContainer(ZoomData, true);
-						if (MinProp) MinProp->SetPropertyValue_InContainer(ZoomData, ZoomEncoderMin);
-						if (MaxProp) MaxProp->SetPropertyValue_InContainer(ZoomData, ZoomEncoderMax);
-						AddLog(FString::Printf(TEXT("  FreeD Zoom: UseManualRange=true, Min=%d, Max=%d"), ZoomEncoderMin, ZoomEncoderMax));
+						if (MinProp) MinProp->SetPropertyValue_InContainer(ZoomData, FMath::RoundToInt(ZoomEncoderMin));
+						if (MaxProp) MaxProp->SetPropertyValue_InContainer(ZoomData, FMath::RoundToInt(ZoomEncoderMax));
+						AddLog(FString::Printf(TEXT("  FreeD Zoom: UseManualRange=true, Min=%.1f, Max=%.1f"), ZoomEncoderMin, ZoomEncoderMax));
 					}
 				}
 			}
@@ -1351,21 +1351,21 @@ FText SFonixFlowTrackerSetupPanel::GetIPAddressText() const { return FText::From
 FText SFonixFlowTrackerSetupPanel::GetFocusMinText() const
 {
 	return bFocusMinCaptured
-		? FText::Format(LOCTEXT("FocusMinFmt", "Min: {0} cm"), FText::AsNumber(FocusEncoderMin))
+		? FText::FromString(FString::Printf(TEXT("Min: %.1f cm"), FocusEncoderMin))
 		: LOCTEXT("FocusMinUncaptured", "Min: not captured");
 }
 
 FText SFonixFlowTrackerSetupPanel::GetFocusMaxText() const
 {
 	return bFocusMaxCaptured
-		? FText::Format(LOCTEXT("FocusMaxFmt", "Max: {0} cm"), FText::AsNumber(FocusEncoderMax))
+		? FText::FromString(FString::Printf(TEXT("Max: %.1f cm"), FocusEncoderMax))
 		: LOCTEXT("FocusMaxUncaptured", "Max: not captured");
 }
 
 FText SFonixFlowTrackerSetupPanel::GetZoomMinText() const
 {
 	return bZoomMinCaptured
-		? FText::Format(LOCTEXT("ZoomMinFmt", "Min: {0} mm"), FText::AsNumber(ZoomEncoderMin))
+		? FText::FromString(FString::Printf(TEXT("Min: %.1f mm"), ZoomEncoderMin))
 		: LOCTEXT("ZoomMinUncaptured", "Min: not captured");
 }
 
