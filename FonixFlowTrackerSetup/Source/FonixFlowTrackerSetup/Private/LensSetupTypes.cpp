@@ -225,6 +225,19 @@ ULensFile* ULensSetupUtility::ApplyLensConfiguration(ACineCameraActor* Camera, c
 	ULensFile* LensFile = CreateLensFile(Config);
 	if (!LensFile) return nullptr;
 
+	// FreeD does not transmit iris data, so pin the iris encoder curve to
+	// MinFStop.  Without this the LiveLink camera controller interpolates
+	// whatever normalised aperture value FreeD happens to send between
+	// MinFStop and MaxFStop, producing a random high f-stop (e.g. f/19).
+	// A flat curve from 0→MinFStop to 1→MinFStop ensures CurrentAperture
+	// always stays at the widest aperture the camera is configured with.
+	{
+		const float MinFStop = CineCamera->LensSettings.MinFStop;
+		LensFile->EncodersTable.Iris.Reset();
+		LensFile->EncodersTable.Iris.AddKey(0.0f, MinFStop);
+		LensFile->EncodersTable.Iris.AddKey(1.0f, MinFStop);
+	}
+
 	// Configure CineCameraComponent
 	ConfigureCineCamera(CineCamera, Config);
 
