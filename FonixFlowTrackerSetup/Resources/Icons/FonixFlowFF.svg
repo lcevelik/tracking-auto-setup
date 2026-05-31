@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <!-- Blue background -->
+  <rect width="40" height="40" rx="4" fill="#1a3a58"/>
+  <!-- Left F: vertical bar -->
+  <rect x="5" y="6" width="4" height="26" fill="white"/>
+  <!-- Left F: top bar -->
+  <rect x="5" y="6" width="13" height="4" fill="white"/>
+  <!-- Left F: middle bar -->
+  <rect x="5" y="17" width="10" height="4" fill="white"/>
+  <!-- Right F: vertical bar -->
+  <rect x="22" y="6" width="4" height="26" fill="white"/>
+  <!-- Right F: top bar -->
+  <rect x="22" y="6" width="13" height="4" fill="white"/>
+  <!-- Right F: middle bar -->
+  <rect x="22" y="17" width="10" height="4" fill="white"/>
+</svg>

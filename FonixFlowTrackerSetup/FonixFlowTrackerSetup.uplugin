@@ -51,6 +51,14 @@
 		{
 			"Name": "LensComponent",
 			"Enabled": true
+		},
+		{
+			"Name": "ICVFX",
+			"Enabled": true
+		},
+		{
+			"Name": "LiveLinkLens",
+			"Enabled": true
 		}
 	]
 }

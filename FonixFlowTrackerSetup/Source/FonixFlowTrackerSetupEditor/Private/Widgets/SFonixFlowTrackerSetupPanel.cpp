@@ -3,6 +3,8 @@
 #include "FonixFlowTrackerSetupStyle.h"
 #include "LensSetupTypes.h"
 #include "SlateOptMacros.h"
+#include "Misc/FileHelper.h"
+#include "HAL/FileManager.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SEditableTextBox.h"
 #include "Widgets/Input/SComboBox.h"
@@ -73,10 +75,6 @@ void SFonixFlowTrackerSetupPanel::Construct(const FArguments& InArgs)
 			// Tab 1: Calibration
 			+ SWidgetSwitcher::Slot()
 			[ BuildCalibrationTab() ]
-
-			// Tab 2: Log
-			+ SWidgetSwitcher::Slot()
-			[ BuildLogTab() ]
 		]
 	];
 }
@@ -152,15 +150,26 @@ void SFonixFlowTrackerSetupPanel::SwitchTab(int32 TabIndex)
 
 TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildTabBar()
 {
+	// Wrap each button in an SBorder whose background reacts to ActiveTab
 	auto MakeTabBtn = [this](int32 TabIdx, FText Label) -> TSharedRef<SWidget>
 	{
-		return SNew(SButton)
-		.Text(Label)
-		.HAlign(HAlign_Center)
-		.VAlign(VAlign_Center)
-		.ButtonStyle(FAppStyle::Get(), "FlatButton")
-		.TextStyle(FAppStyle::Get(), "SmallText")
-		.OnClicked_Lambda([this, TabIdx]() -> FReply { SwitchTab(TabIdx); return FReply::Handled(); });
+		return SNew(SBorder)
+		.BorderImage(FAppStyle::GetBrush("WhiteBrush"))
+		.BorderBackgroundColor_Lambda([this, TabIdx]() -> FLinearColor
+		{
+			return ActiveTab == TabIdx
+				? FLinearColor(0.22f, 0.22f, 0.22f) // active: lighter gray
+				: FLinearColor(0.08f, 0.08f, 0.08f); // inactive: near-black
+		})
+		[
+			SNew(SButton)
+			.Text(Label)
+			.HAlign(HAlign_Center)
+			.VAlign(VAlign_Center)
+			.ButtonStyle(FAppStyle::Get(), "FlatButton")
+			.TextStyle(FAppStyle::Get(), "SmallText")
+			.OnClicked_Lambda([this, TabIdx]() -> FReply { SwitchTab(TabIdx); return FReply::Handled(); })
+		];
 	};
 
 	return SNew(SBorder)
@@ -174,9 +183,6 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildTabBar()
 
 		+ SHorizontalBox::Slot().FillWidth(1.0f)
 		[ MakeTabBtn(1, LOCTEXT("TabCalib", "Calibration")) ]
-
-		+ SHorizontalBox::Slot().FillWidth(1.0f)
-		[ MakeTabBtn(2, LOCTEXT("TabLog", "Log")) ]
 	];
 }
 
@@ -230,52 +236,6 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildCalibrationTab()
 	+ SScrollBox::Slot().Padding(8, 4)
 	[
 		BuildCalibrationSection()
-	];
-}
-
-// ═════════════════════════════════════════════════════════════════════
-// Tab: Log
-// ═════════════════════════════════════════════════════════════════════
-
-TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildLogTab()
-{
-	return SNew(SVerticalBox)
-
-	+ SVerticalBox::Slot().AutoHeight().Padding(8, 4)
-	[
-		SNew(STextBlock)
-		.Text_Raw(this, &SFonixFlowTrackerSetupPanel::GetSetupStatusText)
-		.AutoWrapText(true)
-		.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
-		.ColorAndOpacity_Lambda([this]() -> FSlateColor
-		{
-			if (bSetupComplete && bSetupSuccess) return FSlateColor(FLinearColor(0.2f, 0.8f, 0.4f));
-			if (bSetupComplete && !bSetupSuccess) return FSlateColor(FLinearColor(0.9f, 0.3f, 0.3f));
-			return FSlateColor(FLinearColor(0.6f, 0.6f, 0.6f));
-		})
-	]
-
-	+ SVerticalBox::Slot().FillHeight(1.0f).Padding(8, 0, 8, 8)
-	[
-		SNew(SBorder)
-		.BorderImage(FAppStyle::GetBrush("ToolPanel.DarkGroupBorder"))
-		.Padding(6)
-		[
-			SAssignNew(LogScrollBox, SScrollBox)
-			+ SScrollBox::Slot()
-			[
-				SNew(STextBlock)
-				.Text_Lambda([this]() -> FText
-				{
-					FString Combined;
-					for (const FString& Line : SetupLog) Combined += Line + TEXT("\n");
-					return FText::FromString(Combined);
-				})
-				.AutoWrapText(true)
-				.Font(FCoreStyle::GetDefaultFontStyle("Mono", 9))
-				.ColorAndOpacity(FSlateColor(FLinearColor(0.6f, 0.6f, 0.6f)))
-			]
-		]
 	];
 }
 
@@ -593,7 +553,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildSetupButton()
 		.OnClicked_Lambda([this]() -> FReply
 		{
 			RunOneClickSetup();
-			SwitchTab(2); // Switch to log tab to show progress
+			SwitchTab(1); // Switch to calibration tab after setup
 			return FReply::Handled();
 		})
 		.IsEnabled_Raw(this, &SFonixFlowTrackerSetupPanel::IsSetupButtonEnabled)
@@ -774,6 +734,26 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildCalibrationSection()
 			.OnClicked_Lambda([this]() -> FReply { ApplyCalibration(); return FReply::Handled(); })
 			.IsEnabled_Raw(this, &SFonixFlowTrackerSetupPanel::IsCalibrationReady)
 		]
+	]
+
+	// Apply Lens File button — appears after calibration is applied
+	+ SVerticalBox::Slot().AutoHeight().Padding(0, 4, 0, 0)
+	[
+		SAssignNew(ApplyLensFileBox, SBox)
+		.Visibility_Lambda([this]() -> EVisibility
+		{
+			return bCalibrationApplied ? EVisibility::Visible : EVisibility::Collapsed;
+		})
+		[
+			SNew(SBox).HeightOverride(36)
+			[
+				SNew(SButton)
+				.Text(LOCTEXT("ApplyLensFile", "APPLY LENS FILE"))
+				.HAlign(HAlign_Center)
+				.VAlign(VAlign_Center)
+				.OnClicked_Lambda([this]() -> FReply { ApplyLensFile(); return FReply::Handled(); })
+			]
+		]
 	];
 }
 
@@ -800,11 +780,11 @@ void SFonixFlowTrackerSetupPanel::DetectLocalIP()
 void SFonixFlowTrackerSetupPanel::AddLog(const FString& Message)
 {
 	FString Timestamp = FDateTime::Now().ToString(TEXT("%H:%M:%S"));
-	SetupLog.Add(FString::Printf(TEXT("[%s] %s"), *Timestamp, *Message));
-	if (LogScrollBox.IsValid())
-	{
-		LogScrollBox->ScrollToEnd();
-	}
+	FString Line = FString::Printf(TEXT("[%s] %s\n"), *Timestamp, *Message);
+	FString LogPath = FPaths::ProjectLogDir() / TEXT("FonixFlowTracker.log");
+	IFileManager::Get().MakeDirectory(*FPaths::ProjectLogDir(), true);
+	FFileHelper::SaveStringToFile(Line, *LogPath,
+		FFileHelper::EEncodingOptions::AutoDetect, &IFileManager::Get(), FILEWRITE_Append);
 }
 
 // ── LiveLink Polling ────────────────────────────────────────────────
@@ -931,7 +911,6 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 	bSetupRunning = true;
 	bSetupComplete = false;
 	bSetupSuccess = false;
-	SetupLog.Empty();
 	StopLiveLinkPolling();
 
 	AddLog(TEXT("=== Starting Setup ==="));
@@ -1013,18 +992,45 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 		AddLog(TEXT("  ERROR: Failed to add LiveLinkComponentController"));
 	}
 
-	// ── Step 2: Create Live Link FreeD source (0.0.0.0:40000) ──────
-	AddLog(TEXT("Step 2: Creating Live Link FreeD source..."));
+	// ── Step 2: Create or reuse Live Link FreeD source ──────────────
+	AddLog(TEXT("Step 2: Setting up FreeD source..."));
 
-	FGuid SourceGuid;
 	ILiveLinkClient* LiveLinkClient = nullptr;
-	IModularFeatures& ModularFeatures = IModularFeatures::Get();
-	if (ModularFeatures.IsModularFeatureAvailable(ILiveLinkClient::ModularFeatureName))
 	{
-		LiveLinkClient = &ModularFeatures.GetModularFeature<ILiveLinkClient>(ILiveLinkClient::ModularFeatureName);
+		IModularFeatures& ModularFeatures = IModularFeatures::Get();
+		if (ModularFeatures.IsModularFeatureAvailable(ILiveLinkClient::ModularFeatureName))
+		{
+			LiveLinkClient = &ModularFeatures.GetModularFeature<ILiveLinkClient>(ILiveLinkClient::ModularFeatureName);
+		}
 	}
 
-	if (LiveLinkClient)
+	FGuid SourceGuid;
+
+	// Reuse existing source if it is still registered in the LiveLink client
+	if (ActiveSourceGuid.IsValid() && LiveLinkClient)
+	{
+		TArray<FGuid> ActiveSources = LiveLinkClient->GetSources();
+		if (ActiveSources.Contains(ActiveSourceGuid))
+		{
+			SourceGuid = ActiveSourceGuid;
+			AddLog(TEXT("  Existing FreeD source still active — skipping creation"));
+
+			// Restart polling (was stopped at the top of RunOneClickSetup)
+			bSubjectAutoAssigned = false;
+			bLiveLinkPollingActive = true;
+			UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
+			if (World)
+			{
+				World->GetTimerManager().SetTimer(
+					LiveLinkPollTimerHandle,
+					FTimerDelegate::CreateSP(this, &SFonixFlowTrackerSetupPanel::PollLiveLinkData),
+					0.05f, true);
+				AddLog(TEXT("  LiveLink polling restarted (20Hz)"));
+			}
+		}
+	}
+
+	if (!SourceGuid.IsValid() && LiveLinkClient)
 	{
 		// Find the FreeD connection settings struct via reflection
 		UScriptStruct* FreeDSettingsStruct = nullptr;
@@ -1104,7 +1110,7 @@ void SFonixFlowTrackerSetupPanel::RunOneClickSetup()
 			if (!FreeDSettingsStruct) AddLog(TEXT("  ERROR: FLiveLinkFreeDConnectionSettings struct not found"));
 		}
 	}
-	else
+	else if (!LiveLinkClient)
 	{
 		AddLog(TEXT("  ERROR: LiveLink client not available"));
 	}
@@ -1254,10 +1260,61 @@ void SFonixFlowTrackerSetupPanel::ApplyCalibration()
 	}
 
 	AddLog(TEXT("=== Calibration Applied ==="));
+	bCalibrationApplied = true;
 }
 
-// ═════════════════════════════════════════════════════════════════════
-// QUERIES
+// ── Apply Lens File ─────────────────────────────────────────────────
+
+void SFonixFlowTrackerSetupPanel::ApplyLensFile()
+{
+	if (!SelectedCamera || !SelectedCamera->IsValidLowLevel())
+	{
+		AddLog(TEXT("ApplyLensFile: No camera selected"));
+		return;
+	}
+
+	ULensFile* LensFile = LoadObject<ULensFile>(nullptr, TEXT("/Game/FonixFlowTrackerSetup/TrackedLens"));
+	if (!LensFile)
+	{
+		AddLog(TEXT("ApplyLensFile: TrackedLens asset not found — run Apply Calibration first"));
+		return;
+	}
+
+	// Apply to LensComponent (create if missing)
+	ULensComponent* LensComp = SelectedCamera->FindComponentByClass<ULensComponent>();
+	if (!LensComp)
+	{
+		LensComp = NewObject<ULensComponent>(SelectedCamera, TEXT("FonixFlowLensComponent"));
+		LensComp->RegisterComponent();
+		SelectedCamera->AddInstanceComponent(LensComp);
+		AddLog(TEXT("ApplyLensFile: LensComponent created"));
+	}
+
+	FLensFilePicker Picker;
+	Picker.bUseDefaultLensFile = false;
+	Picker.LensFile = LensFile;
+	LensComp->SetLensFilePicker(Picker);
+	AddLog(FString::Printf(TEXT("ApplyLensFile: '%s' applied to LensComponent"), *LensFile->GetName()));
+
+	// Apply to LiveLink camera controller if present
+	ULiveLinkComponentController* LLCtrl = SelectedCamera->FindComponentByClass<ULiveLinkComponentController>();
+	if (LLCtrl && LLCtrl->ControllerMap.Contains(ULiveLinkCameraRole::StaticClass()))
+	{
+		ULiveLinkCameraController* CamCtrl = Cast<ULiveLinkCameraController>(
+			LLCtrl->ControllerMap[ULiveLinkCameraRole::StaticClass()]);
+		if (CamCtrl)
+		{
+			CamCtrl->LensFilePicker.bUseDefaultLensFile = false;
+			CamCtrl->LensFilePicker.LensFile = LensFile;
+			CamCtrl->Modify();
+			AddLog(TEXT("ApplyLensFile: Lens file set on LiveLink camera controller"));
+		}
+	}
+
+	AddLog(TEXT("=== Lens File Applied ==="));
+	if (GEditor) GEditor->NoteSelectionChange();
+}
+
 // ═════════════════════════════════════════════════════════════════════
 
 FText SFonixFlowTrackerSetupPanel::GetIPAddressText() const { return FText::FromString(LocalIPAddress); }

@@ -65,7 +65,7 @@ private:
 	bool bSetupRunning = false;
 	bool bSetupComplete = false;
 	bool bSetupSuccess = false;
-	TArray<FString> SetupLog;
+	bool bCalibrationApplied = false;
 
 	// Source GUID for cleanup
 	FGuid ActiveSourceGuid;
@@ -78,22 +78,18 @@ private:
 	TSharedPtr<SBox> ZoomLensInputBox;
 	TSharedPtr<SBox> ZoomCalibBox;
 
-	// Log scroll box for auto-scroll to bottom
-	TSharedPtr<SScrollBox> LogScrollBox;
+	// Calibration: "Apply Lens File" button box (shown after Apply Calibration)
+	TSharedPtr<SBox> ApplyLensFileBox;
 
-	// Tab state: 0 = Camera Setup, 1 = Calibration, 2 = Log
+	// Tab state: 0 = Camera Setup, 1 = Calibration
 	int32 ActiveTab = 0;
 	TSharedPtr<SWidgetSwitcher> TabSwitcher;
-	TSharedPtr<SButton> TabBtnCamera;
-	TSharedPtr<SButton> TabBtnCalibration;
-	TSharedPtr<SButton> TabBtnLog;
 
 	// UI Build
 	TSharedRef<SWidget> BuildHeader();
 	TSharedRef<SWidget> BuildTabBar();
 	TSharedRef<SWidget> BuildCameraSetupTab();
 	TSharedRef<SWidget> BuildCalibrationTab();
-	TSharedRef<SWidget> BuildLogTab();
 	TSharedRef<SWidget> BuildProtocolSection();
 	TSharedRef<SWidget> BuildNetworkSection();
 	TSharedRef<SWidget> BuildCameraSection();
@@ -113,6 +109,7 @@ private:
 	void CaptureZoomWide();
 	void CaptureZoomTele();
 	void ApplyCalibration();
+	void ApplyLensFile();
 	void DetectLocalIP();
 	void AddLog(const FString& Message);
 	void PollLiveLinkData();
