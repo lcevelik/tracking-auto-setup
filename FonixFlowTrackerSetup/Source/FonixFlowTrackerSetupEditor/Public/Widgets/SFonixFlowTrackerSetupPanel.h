@@ -7,6 +7,7 @@
 #include "Widgets/Views/SListView.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
 #include "FonixFlowTrackerSetupTypes.h"
+#include "FonixFlowTrackerActions.h"
 #include "LensSetupTypes.h"
 
 class ACineCameraActor;
@@ -17,7 +18,7 @@ class SScrollBox;
  * Unified setup panel for FonixFlow Tracker Setup.
  * User selects a camera, then clicks "Setup Now" to configure everything.
  */
-class FONIXFLOWTRACKERSETUPEDITOR_API SFonixFlowTrackerSetupPanel : public SCompoundWidget
+class FONIXFLOWTRACKERSETUPEDITOR_API SFonixFlowTrackerSetupPanel : public SCompoundWidget, public IFonixFlowTrackerActions
 {
 public:
 	SLATE_BEGIN_ARGS(SFonixFlowTrackerSetupPanel) {}
@@ -25,6 +26,18 @@ public:
 
 	void Construct(const FArguments& InArgs);
 	~SFonixFlowTrackerSetupPanel();
+
+	// IFonixFlowTrackerActions interface
+	virtual FFonixFlowTrackerState GetState() const override;
+	virtual bool SelectCamera(const FString& CameraName) override;
+	virtual TArray<FString> GetAvailableCameraNames() const override;
+	virtual bool SetProtocol(const FString& Protocol) override;
+	virtual bool SetLensType(const FString& LensType) override;
+	virtual bool SetPrimeFocalLength(float MM) override;
+	virtual bool SetZoomRange(float MinMM, float MaxMM) override;
+	virtual FString RunSetup() override;
+	virtual FString CaptureCalibration(const FString& Target) override;
+	virtual FString ApplyCalibrationAction() override;
 
 private:
 	// State

@@ -1,5 +1,6 @@
 #include "Widgets/SFonixFlowTrackerSetupPanel.h"
 #include "FonixFlowTrackerSetupSubsystem.h"
+#include "FonixFlowTrackerActions.h"
 #include "FonixFlowTrackerSetupStyle.h"
 #include "LensSetupTypes.h"
 #include "SlateOptMacros.h"
@@ -129,7 +130,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildHeader()
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
 				SNew(STextBlock)
-				.Text(LOCTEXT("Version", "v1.2.0"))
+				.Text(LOCTEXT("Version", "v1.3.0"))
 				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
 				.ColorAndOpacity(FSlateColor(FLinearColor(0.4f, 0.4f, 0.4f)))
 			]
@@ -1345,3 +1346,188 @@ bool SFonixFlowTrackerSetupPanel::IsSetupButtonEnabled() const
 }
 
 #undef LOCTEXT_NAMESPACE
+
+// ═════════════════════════════════════════════════════════════════════
+// IFonixFlowTrackerActions — AI Chat interface
+// ═════════════════════════════════════════════════════════════════════
+
+FFonixFlowTrackerState SFonixFlowTrackerSetupPanel::GetState() const
+{
+	FFonixFlowTrackerState State;
+
+	// Camera
+	State.bHasCamera = (SelectedCamera != nullptr && SelectedCamera->IsValidLowLevel());
+	State.SelectedCamera = State.bHasCamera ? SelectedCamera->GetActorLabel() : TEXT("None");
+
+	// Protocol
+	State.Protocol = (SelectedProtocol == ETrackingProtocol::FreeD) ? TEXT("FreeD") : TEXT("OpenTrackIO");
+	State.IPAddress = LocalIPAddress;
+	State.Port = ListeningPort;
+
+	// Lens
+	State.LensType = bUsePrimeLens ? TEXT("Prime") : TEXT("Zoom");
+	State.PrimeFocalLengthMM = PrimeLensFocalLengthMM;
+	State.ZoomMinMM = FocalLengthMinMM;
+	State.ZoomMaxMM = FocalLengthMaxMM;
+
+	// Status
+	State.bSetupComplete = bSetupComplete;
+	State.bLiveLinkActive = bLiveLinkPollingActive;
+
+	// Calibration
+	State.bCalibrationApplied = bCalibrationApplied;
+	State.bNearCaptured = bFocusMinCaptured;
+	State.bFarCaptured = bFocusMaxCaptured;
+	State.bWideCaptured = bZoomWideCaptured;
+	State.bTeleCaptured = bZoomTeleCaptured;
+
+	// Live values
+	State.LiveFocusCM = LiveLinkFocusValue;
+	State.LiveZoomMM = LiveLinkZoomValue;
+
+	return State;
+}
+
+bool SFonixFlowTrackerSetupPanel::SelectCamera(const FString& CameraName)
+{
+	for (int32 i = 0; i < CameraWeakPtrs.Num(); i++)
+	{
+		ACineCameraActor* Cam = CameraWeakPtrs[i].Get();
+		if (Cam && Cam->GetActorLabel() == CameraName)
+		{
+			SelectedCamera = Cam;
+			if (CameraListView.IsValid())
+			{
+				CameraListView->SetSelection(CameraWeakPtrs[i]);
+			}
+			return true;
+		}
+	}
+	return false;
+}
+
+TArray<FString> SFonixFlowTrackerSetupPanel::GetAvailableCameraNames() const
+{
+	TArray<FString> Names;
+	for (const auto& WeakCam : CameraWeakPtrs)
+	{
+		ACineCameraActor* Cam = WeakCam.Get();
+		if (Cam) Names.Add(Cam->GetActorLabel());
+	}
+	return Names;
+}
+
+bool SFonixFlowTrackerSetupPanel::SetProtocol(const FString& Protocol)
+{
+	if (Protocol == TEXT("FreeD"))
+	{
+		SelectedProtocol = ETrackingProtocol::FreeD;
+		return true;
+	}
+	if (Protocol == TEXT("OpenTrackIO"))
+	{
+		SelectedProtocol = ETrackingProtocol::OpenTrackIO;
+		return true;
+	}
+	return false;
+}
+
+bool SFonixFlowTrackerSetupPanel::SetLensType(const FString& LensType)
+{
+	if (LensType == TEXT("Prime"))
+	{
+		bUsePrimeLens = true;
+		UpdateLensTypeVisibility();
+		return true;
+	}
+	if (LensType == TEXT("Zoom"))
+	{
+		bUsePrimeLens = false;
+		UpdateLensTypeVisibility();
+		return true;
+	}
+	return false;
+}
+
+bool SFonixFlowTrackerSetupPanel::SetPrimeFocalLength(float MM)
+{
+	if (MM >= 8.0f && MM <= 300.0f)
+	{
+		PrimeLensFocalLengthMM = MM;
+		return true;
+	}
+	return false;
+}
+
+bool SFonixFlowTrackerSetupPanel::SetZoomRange(float MinMM, float MaxMM)
+{
+	if (MinMM >= 8.0f && MaxMM <= 300.0f && MinMM < MaxMM)
+	{
+		FocalLengthMinMM = MinMM;
+		FocalLengthMaxMM = MaxMM;
+		return true;
+	}
+	return false;
+}
+
+FString SFonixFlowTrackerSetupPanel::RunSetup()
+{
+	if (!SelectedCamera || !SelectedCamera->IsValidLowLevel())
+	{
+		return TEXT("ERROR: No camera selected. Select a CineCameraActor first.");
+	}
+	RunOneClickSetup();
+	if (bSetupSuccess)
+	{
+		return FString::Printf(TEXT("Setup complete for '%s'. Protocol: %s, Port: %d. Switch to Calibration tab to continue."),
+			*SelectedCamera->GetActorLabel(), *GetState().Protocol, ListeningPort);
+	}
+	return TEXT("Setup failed. Check the log for details.");
+}
+
+FString SFonixFlowTrackerSetupPanel::CaptureCalibration(const FString& Target)
+{
+	if (!bSetupComplete || !bSetupSuccess)
+	{
+		return TEXT("ERROR: Run setup first before calibrating.");
+	}
+
+	if (Target == TEXT("Near"))
+	{
+		CaptureFocusMin();
+		return FString::Printf(TEXT("Near captured: %.2f cm"), FocusEncoderMin);
+	}
+	if (Target == TEXT("Far"))
+	{
+		CaptureFocusMax();
+		return FString::Printf(TEXT("Far captured: %.2f cm"), FocusEncoderMax);
+	}
+	if (Target == TEXT("Wide"))
+	{
+		if (bUsePrimeLens) return TEXT("ERROR: Wide capture is only for zoom lenses.");
+		CaptureZoomWide();
+		return FString::Printf(TEXT("Wide captured: %.2f mm"), ZoomEncoderWide);
+	}
+	if (Target == TEXT("Tele"))
+	{
+		if (bUsePrimeLens) return TEXT("ERROR: Tele capture is only for zoom lenses.");
+		CaptureZoomTele();
+		return FString::Printf(TEXT("Tele captured: %.2f mm"), ZoomEncoderTele);
+	}
+
+	return TEXT("ERROR: Invalid target. Use: Near, Far, Wide, or Tele.");
+}
+
+FString SFonixFlowTrackerSetupPanel::ApplyCalibrationAction()
+{
+	if (!IsCalibrationReady())
+	{
+		return TEXT("ERROR: Calibration not ready. Capture all required values first.");
+	}
+	ApplyCalibration();
+	if (bCalibrationApplied)
+	{
+		return TEXT("Calibration applied successfully. Lens file created at /Game/FonixFlowTrackerSetup/TrackedLens.");
+	}
+	return TEXT("Calibration failed. Check the log for details.");
+}

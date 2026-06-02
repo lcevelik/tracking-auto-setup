@@ -67,6 +67,31 @@ The editor module depends on the runtime module, never the reverse. The runtime 
 
 `UFonixFlowTrackerSettings` (`UDeveloperSettings`, config=Game) exposes defaults and the AI Chat API key. Accessible at **Edit → Project Settings → Plugins → FonixFlow Tracker Setup**. The AI chat panel (`SFonixFlowTrackerAIChatPanel`) calls an OpenAI-compatible endpoint (default: OpenRouter with `anthropic/claude-sonnet-4`) and is gated on `IsAIChatConfigured()` (non-empty API key).
 
+## AI Chat Architecture
+
+The AI chat is an active collaborator with function calling support:
+
+**Interface pattern** — `IFonixFlowTrackerActions` (defined in `FonixFlowTrackerActions.h`) exposes plugin actions as an abstract interface. `SFonixFlowTrackerSetupPanel` implements it. The chat panel holds a raw pointer to the interface.
+
+**State injection** — Every API call includes the full plugin state as JSON in the system prompt (via `FFonixFlowTrackerState::ToJSON()`). The AI always knows: selected camera, protocol, lens type, calibration status, live values, available cameras.
+
+**Function calling** — 8 tools defined in `FonixFlowAIChatTools.cpp`:
+- `get_plugin_state` — query current state
+- `select_camera` — select a CineCameraActor by name
+- `set_protocol` — switch FreeD/OpenTrackIO
+- `set_lens_type` — switch Prime/Zoom
+- `set_prime_focal_length` — set focal length mm
+- `set_zoom_range` — set min/max zoom range
+- `run_setup` — trigger one-click setup
+- `capture_calibration` — capture Near/Far/Wide/Tele
+- `apply_calibration` — create lens file from captured data
+
+**Tool loop** — On `tool_calls` response: execute each tool, add results as `tool` role messages, send follow-up request. Loop until AI returns text only (no more tool calls).
+
+**Quick actions** — 4 preset buttons below chat: Status, Setup, Calibrate, Help. Each sends a natural-language prompt that triggers the AI to use appropriate tools.
+
+**Layout** — Main tab uses `SSplitter` (60/40 vertical): setup panel on top, chat panel on bottom.
+
 ## Logs
 
 All setup activity is appended to `<ProjectDir>/Saved/Logs/FonixFlowTracker.log` via `AddLog()`. Use this for debugging without opening the UE Output Log.
