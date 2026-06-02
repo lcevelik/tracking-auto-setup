@@ -4,12 +4,21 @@
 
 ## Quick Start
 
+### Option A — Pre-built binary (no compilation needed)
+1. **Download** the ZIP for your UE version from [Releases](https://github.com/lcevelik/fonixflow-tracker-setup/releases)
+2. **Extract** into your project's `Plugins/` folder
+3. **Enable** — Edit > Plugins > "FonixFlow Tracker Setup" > Enable
+4. **Click** the FF blue square button in the Level Editor toolbar
+
+### Option B — Build from source
 1. **Copy** `FonixFlowTrackerSetup/` into your project's `Plugins/` folder
 2. **Enable** — Edit > Plugins > "FonixFlow Tracker Setup" > Enable
-3. **Click** the FF blue square button in the Level Editor toolbar
-4. **Select camera** → choose Prime or Zoom → click **SETUP NOW**
-5. **Calibrate** — rotate lens to min/max, capture Near/Far (and Wide/Tele for zoom), click **APPLY CALIBRATION**
-6. Once calibrated, **APPLY LENS FILE** appears to re-apply the calibration to a new session
+3. UBT compiles on project build
+
+### Usage
+1. **Select camera** → choose Prime or Zoom → click **SETUP NOW**
+2. **Calibrate** — rotate lens to min/max, capture Near/Far (and Wide/Tele for zoom), click **APPLY CALIBRATION**
+3. Once calibrated, **APPLY LENS FILE** appears to re-apply the calibration to a new session
 
 ## What It Does
 
@@ -77,15 +86,15 @@ FonixFlowTrackerSetup/
 │       └── Private/Widgets/            # Panel, Wizard, AI Chat implementation
 ```
 
-## Known Compatibility
+## Supported UE Versions
 
-| Engine | Status |
-|--------|--------|
-| UE 5.5 | Builds and runs — all APIs verified against 5.5 documentation |
-| UE 5.6 | Builds and runs |
-| UE 5.7 | Builds and runs (`GetObjectsOfClass` replaces `TObjectIterator` for C++20) |
-| UE 5.8 | Builds and runs — all APIs verified against 5.8 documentation |
-| UE 5.4 and below | Not tested |
+| Engine | Status | Pre-built Binary |
+|--------|--------|-----------------|
+| UE 5.5 | Builds and runs — all APIs verified | ✅ Win64 ZIP |
+| UE 5.6 | Builds and runs | ✅ Win64 ZIP |
+| UE 5.7 | Builds and runs (`GetObjectsOfClass` replaces `TObjectIterator` for C++20) | ✅ Win64 ZIP |
+| UE 5.8 | Builds and runs — all APIs verified against 5.8 documentation | Source only |
+| UE 5.4 and below | Not tested | — |
 
 ## License
 

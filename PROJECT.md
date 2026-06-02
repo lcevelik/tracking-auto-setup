@@ -6,7 +6,7 @@
 - Support FreeD (3D Protocol) and OpenTrack IO protocols
 - Prime and Zoom lens support with configurable focal length ranges
 - Live encoder readout and calibration from FreeD data stream
-- Target UE 5.6+ with UE 5.7 verified
+- Target UE 5.5–5.8 with pre-built Win64 binaries
 
 ## In Progress
 - [ ] Runtime testing — verify full flow end-to-end in UE Editor
@@ -24,9 +24,15 @@
 - [ ] Documentation and examples
 - [ ] AI Chat: streaming responses, markdown rendering
 - [ ] AI Chat: context-aware setup suggestions (read current scene state)
-- [ ] UE 5.5 and below compatibility testing
+- [ ] UE 5.8 pre-built binary (needs UE 5.8 installed on WinPC)
 
 ## Done
+- [x] v1.2.0 — UE 5.5–5.8 compatibility, pre-built binaries
+  - [x] Verified all APIs compatible across UE 5.5, 5.6, 5.7, 5.8
+  - [x] Pre-built Win64 binaries for UE 5.5, 5.6, 5.7 on GitHub Releases
+  - [x] Build pipeline: PowerShell script builds via UBT on WinPC, packages into ZIP
+  - [x] Version bump locations: .uplugin VersionName + SFonixFlowTrackerSetupPanel.cpp LOCTEXT
+  - [x] CLAUDE.md added for agent guidance
 - [x] v1.1.0 — UE 5.7 compatibility + workflow improvements
   - [x] Replace `TObjectIterator` for-loops with `GetObjectsOfClass()` (fixes UE5.7 C++20 MSVC C7568 error)
   - [x] Applied in both `FonixFlowTrackerSetupSubsystem.cpp` and `SFonixFlowTrackerSetupPanel.cpp`
@@ -74,7 +80,8 @@
 - (none)
 
 ## Releases
-- v1.1.0 — UE5.7 C++20 compat, 6 workflow improvements, log to file, FF icon, tab highlight (current)
+- v1.2.0 — UE 5.5–5.8 compat, pre-built Win64 binaries (5.5/5.6/5.7), CLAUDE.md (current)
+- v1.1.0 — UE5.7 C++20 compat, 6 workflow improvements, log to file, FF icon, tab highlight
 - v1.0.0 — Full calibration pipeline, LiveLink polling, prime/zoom, FreeD manual range
 - v0.3.0 — UE 5.6 compatibility, reflection-based FreeD source creation
 - v0.2.0 — AI Chat, Setup Wizard, Camera Picker
@@ -95,6 +102,8 @@
 - FreeD default port: 40000
 - Key modules: Sockets, Networking (IP detection), LiveLinkCamera, LiveLinkFreeD
 - SlateCore Brushes in UE5.6/5.7: only SlateImageBrush, SlateColorBrush, SlateDynamicImageBrush, SlateBoxBrush, SlateBorderBrush, SlateRoundedBoxBrush — NO FSlateVectorImageBrush
+- Build pipeline: `build_plugin.ps1` on WinPC (D:\TempPluginBuild) — creates temp project, runs UBT per UE version, packages ZIPs
+- Build settings: UE 5.5/5.6 use V4, UE 5.7 uses V5 + bOverrideBuildEnvironment=true
 - Deploy pipeline: `scp -r FonixFlowTrackerSetup "f@10.0.0.18:F:/Unreal Projects/AbelCineDemo/Plugins/"` then SSH build
 - Build cmd (5.6): `"D:\UE_Engine\UE_5.6\Engine\Build\BatchFiles\Build.bat" AbelCineDemoEditor Win64 Development -Project="F:\Unreal Projects\AbelCineDemo\AbelCineDemo.uproject"`
 - Build cmd (5.7 plugin): `"D:\UE_Engine\UE_5.7\Engine\Build\BatchFiles\RunUAT.bat" BuildPlugin -Plugin="..." -Package="..." -Rocket -TargetPlatforms=Win64`
