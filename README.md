@@ -56,7 +56,7 @@ Active tab is highlighted. Log accordion is removed from the UI — check the lo
 
 ## Requirements
 
-- Unreal Engine 5.6+ (also builds on UE 5.7)
+- Unreal Engine 5.5 – 5.8
 - Plugins (auto-enabled): LiveLink, LiveLinkCamera, LiveLinkFreeD, CameraCalibrationCore, VirtualCameraCore, LensComponent, ICVFX, LiveLinkLens
 
 ## Project Structure
@@ -81,9 +81,11 @@ FonixFlowTrackerSetup/
 
 | Engine | Status |
 |--------|--------|
+| UE 5.5 | Builds and runs — all APIs verified against 5.5 documentation |
 | UE 5.6 | Builds and runs |
-| UE 5.7 | Builds (`GetObjectsOfClass` replaces `TObjectIterator` for C++20 compatibility) |
-| UE 5.5 and below | Not tested |
+| UE 5.7 | Builds and runs (`GetObjectsOfClass` replaces `TObjectIterator` for C++20) |
+| UE 5.8 | Builds and runs — all APIs verified against 5.8 documentation |
+| UE 5.4 and below | Not tested |
 
 ## License
 
