@@ -1,0 +1,116 @@
+Design Brief: FonixFlow Tracker Setup — Compact UE5 Editor Panel
+
+CONTEXT
+This is a panel inside the Unreal Engine 5 editor (dockable, ~350 px wide,
+variable height). It is built in C++ Slate and must follow Unreal's dark
+editor aesthetic. The user is a camera operator or technician setting up a
+physical lens tracker in a studio. They open the panel once per shoot day,
+run through it top to bottom, then close it. Speed and clarity matter more
+than discoverability.
+
+CURRENT PROBLEMS
+- 8 vertical sections separated by horizontal rules, all stacked in a scrollbox
+- Every section has a bold 12pt section title + a 10pt grey description
+  sentence below it + the actual controls — this triples the height of every row
+- Lens type selection (Prime / Zoom) renders as two large card-style radio
+  buttons each with a title + description sub-line, taking ~160 px for a
+  binary choice
+- Protocol selection repeats the same card pattern for a choice that will be
+  FreeD 99% of the time
+- The Network section shows "Your IP" in a full bordered card + a separate
+  port line + an instruction paragraph
+- The calibration section has a LiveLink readout box, a focus box (Near/Far),
+  an optional zoom box (Wide/Tele), and an Apply button — all in separate borders
+- The log at the bottom is a free-height monospace text block inside another
+  scrollbox
+
+DESIGN GOALS
+1. Everything above the action buttons fits in ~500 px with no scrolling on
+   a 1080p monitor (panel is typically docked to ~350 px wide)
+2. Section titles replaced by compact inline ALL-CAPS labels — like a
+   property row in the Details panel — not large bold headings
+3. Lens Type and Protocol: single horizontal row of labelled radio/toggle
+   chips — not card blocks
+4. Network: show IP + port in one single-line row, right-aligned Refresh button
+5. Calibration live readout: Focus (cm) and Zoom (mm) side-by-side in one
+   row, small monospace numbers, green/blue tinted
+6. Focus capture: Near and Far on one row each — current value left,
+   button right — two rows total
+7. Zoom capture (zoom lens only): same pattern as focus — Wide / Tele,
+   two rows
+8. SETUP NOW and APPLY CALIBRATION stay as full-width prominent buttons
+   (height ~36 px), slightly accent-coloured
+9. Status and Log collapse into a small toggle-able accordion at the bottom
+   labelled "Log v" — closed by default, only ~24 px tall when closed.
+   When open, shows ~100 px of monospace log text
+
+VISUAL STYLE
+- Follow Unreal Editor dark theme:
+    background    #1a1a1a
+    panel border  #2a2a2a
+    text          #cccccc
+    muted text    #666666
+- Accent for live data:
+    focus value   #33cc66  (green)
+    zoom value    #66aaff  (blue)
+- Accent for action buttons:
+    Setup Now     #2a4a6a  (steel blue tint)
+    Apply Calib   #1a5a2a  (dark green tint)
+- Captured / confirmed values:  bright white  #ffffff
+- Uncaptured / pending values:  amber         #cc8833
+- Typography (Unreal editor defaults):
+    section labels  Regular 10pt ALL-CAPS
+    input labels    Regular 10pt
+    live values     Bold 11pt Mono
+    log text        Mono 9pt
+- No icons needed — text labels only
+
+COMPACT LAYOUT (350 px wide, top to bottom)
+
++------------------------------------------------------------------+
+| [logo 32px]  FonixFlow Tracker Setup              v1.0.0         |  ~44px
++------------------------------------------------------------------+
+| CAMERA   [CineCameraActor_01 ▾ dropdown or list row]   [Refresh] |  ~28px
++------------------------------------------------------------------+
+| LENS     (o) Prime  [50 mm ____]   ( ) Zoom [28____–100____  mm] |  ~28px
++------------------------------------------------------------------+
+| PROTOCOL (o) FreeD 3D   ( ) OpenTrack IO                         |  ~20px
++------------------------------------------------------------------+
+| NETWORK  192.168.1.42 : 40000                          [Refresh]  |  ~20px
++------------------------------------------------------------------+
+|                                                                  |
+|  [            SETUP NOW            ]                             |  ~36px
+|                                                                  |
++------------------------------------------------------------------+
+| CALIBRATION                                                      |
+|  Focus  123.45 cm          Zoom  35.00 mm    (live readout row)  |  ~20px
+|  NEAR   -- 50.00 cm ---------------------------  [Capture Near]  |  ~24px
+|  FAR    -- not captured -----------------------  [Capture Far ]  |  ~24px
+|  WIDE   -- not captured -----------------------  [Capture Wide]  |  ~24px  (zoom lens only)
+|  TELE   -- not captured -----------------------  [Capture Tele]  |  ~24px  (zoom lens only)
+|                                                                  |
+|  [         APPLY CALIBRATION         ]                           |  ~36px
+|                                                                  |
++------------------------------------------------------------------+
+| Log v  (collapsed accordion, 24px tall when closed)              |
++------------------------------------------------------------------+
+
+Total height (zoom lens, log closed): ~370 px — no scrolling needed.
+
+STATES TO SHOW IN MOCKUP
+Frame 1 — Prime lens selected
+  Zoom rows (WIDE / TELE) hidden. Lens row shows only Prime spinbox.
+
+Frame 2 — Zoom lens selected
+  All four capture rows visible. Lens row shows Min–Max spinboxes.
+
+Frame 3 — Log accordion open (add to either frame)
+  Accordion expands to ~100 px showing grey monospace log lines.
+
+Frame 4 — Captured state
+  NEAR and FAR show white confirmed values. APPLY CALIBRATION button
+  becomes fully bright (not dimmed).
+
+DELIVERABLE
+Pixel-accurate mockup at 350 px wide for all four frames above.
+Export as PNG or Figma file. Colour values are exact — no interpretation.

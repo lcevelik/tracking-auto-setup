@@ -129,7 +129,7 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildHeader()
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
 				SNew(STextBlock)
-				.Text(LOCTEXT("Version", "v1.0.0"))
+				.Text(LOCTEXT("Version", "v1.2.0"))
 				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
 				.ColorAndOpacity(FSlateColor(FLinearColor(0.4f, 0.4f, 0.4f)))
 			]
