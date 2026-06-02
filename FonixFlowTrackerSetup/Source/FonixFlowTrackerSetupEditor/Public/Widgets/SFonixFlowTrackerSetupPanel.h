@@ -6,6 +6,7 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/Views/SListView.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
+#include "Widgets/SFonixFlowTrackerAIChatPanel.h"
 #include "FonixFlowTrackerSetupTypes.h"
 #include "FonixFlowTrackerActions.h"
 #include "LensSetupTypes.h"

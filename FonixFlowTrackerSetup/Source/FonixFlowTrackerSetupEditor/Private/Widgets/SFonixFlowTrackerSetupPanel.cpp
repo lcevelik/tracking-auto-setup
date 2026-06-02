@@ -75,6 +75,13 @@ void SFonixFlowTrackerSetupPanel::Construct(const FArguments& InArgs)
 			// Tab 1: Calibration
 			+ SWidgetSwitcher::Slot()
 			[ BuildCalibrationTab() ]
+
+			// Tab 2: Chat
+			+ SWidgetSwitcher::Slot()
+			[
+				SNew(SFonixFlowTrackerAIChatPanel)
+				.Actions(this)
+			]
 		]
 	];
 }
@@ -183,6 +190,9 @@ TSharedRef<SWidget> SFonixFlowTrackerSetupPanel::BuildTabBar()
 
 		+ SHorizontalBox::Slot().FillWidth(1.0f)
 		[ MakeTabBtn(1, LOCTEXT("TabCalib", "Calibration")) ]
+
+		+ SHorizontalBox::Slot().FillWidth(1.0f)
+		[ MakeTabBtn(2, LOCTEXT("TabChat", "Chat")) ]
 	];
 }
 

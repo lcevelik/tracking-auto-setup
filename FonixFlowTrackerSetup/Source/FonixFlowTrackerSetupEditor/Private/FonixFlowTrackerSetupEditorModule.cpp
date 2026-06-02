@@ -5,13 +5,11 @@
 #include "FonixFlowTrackerSetupTypes.h"
 #include "FonixFlowTrackerSetupStyle.h"
 #include "Widgets/SFonixFlowTrackerSetupPanel.h"
-#include "Widgets/SFonixFlowTrackerAIChatPanel.h"
 #include "ToolMenus.h"
 #include "LevelEditor.h"
 #include "WorkspaceMenuStructure.h"
 #include "WorkspaceMenuStructureModule.h"
 #include "Widgets/Docking/SDockTab.h"
-#include "Widgets/Layout/SSplitter.h"
 #include "Widgets/Images/SImage.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Styling/AppStyle.h"
@@ -93,26 +91,11 @@ void FFonixFlowTrackerSetupEditorModule::ShutdownModule()
 TSharedRef<SDockTab> FFonixFlowTrackerSetupEditorModule::OnSpawnMainPanelTab(
 	const FSpawnTabArgs& Args)
 {
-	// Create setup panel first (it implements IFonixFlowTrackerActions)
-	TSharedPtr<SFonixFlowTrackerSetupPanel> SetupPanel;
-
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
 		.Label(LOCTEXT("TabLabel", "FonixFlow Tracker Setup"))
 		[
-			SNew(SSplitter)
-			.Orientation(Orient_Vertical)
-			+ SSplitter::Slot()
-			.Value(0.6f)
-			[
-				SAssignNew(SetupPanel, SFonixFlowTrackerSetupPanel)
-			]
-			+ SSplitter::Slot()
-			.Value(0.4f)
-			[
-				SNew(SFonixFlowTrackerAIChatPanel)
-				.Actions(SetupPanel.Get())
-			]
+			SNew(SFonixFlowTrackerSetupPanel)
 		];
 }
 
